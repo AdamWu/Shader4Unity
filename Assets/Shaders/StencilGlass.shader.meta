@@ -1,0 +1,9 @@
+fileFormatVersion: 2
+guid: 5740c5d84d7460d4985ee92af9e15d76
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  userData: 
+  assetBundleName: shaders/stencilglass.assetbundle
+  assetBundleVariant: 

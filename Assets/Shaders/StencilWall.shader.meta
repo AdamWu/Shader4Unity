@@ -1,0 +1,9 @@
+fileFormatVersion: 2
+guid: afe4f6d976025a64cb8b5a796b72d5a5
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  userData: 
+  assetBundleName: shaders/stencilwall.assetbundle
+  assetBundleVariant: 
