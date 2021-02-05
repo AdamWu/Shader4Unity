@@ -18,6 +18,7 @@ Shader "Custom/UnityPBS" {
 
 		float _Smoothness;
 		sampler2D _MainTex;
+		float4 _MainTex_ST;
 		samplerCUBE _Cubemap;
 		float _Metallic;
 		float _DiffuseFactor;
@@ -104,7 +105,7 @@ Shader "Custom/UnityPBS" {
 	    v2f vert(appdata_full v) {
 			v2f o;
 			o.pos = UnityObjectToClipPos(v.vertex);
-			o.uv = v.texcoord;
+			o.uv = TRANSFORM_TEX(v.texcoord, _MainTex);
 			o.normal= UnityObjectToWorldNormal(v.normal);
 			o.worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
 			return o;
