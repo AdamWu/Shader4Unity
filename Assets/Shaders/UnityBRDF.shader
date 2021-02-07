@@ -19,7 +19,8 @@ Shader "Custom/UnityBRDF"
 			#pragma target 3.0
 
 			#define FORWARD_BASE_PASS
-			#pragma multi_compile VERTEXLIGHT_ON
+			#pragma multi_compile _ VERTEXLIGHT_ON	// for vertex light
+			#pragma multi_compile _ SHADOWS_SCREEN	// only for directional light
 
 			#pragma vertex vert
 			#pragma fragment frag
@@ -38,14 +39,33 @@ Shader "Custom/UnityBRDF"
 
 			CGPROGRAM
 			#pragma target 3.0
-
+			 
 			// different light variant
 			#pragma multi_compile DIRECTIONAL POINT SPOT
+			#pragma multi_compile_fwdadd_fullshadows	// for all lights
 
 			#pragma vertex vert
 			#pragma fragment frag
 
 			#include "UnityBRDFLighting.cginc"
+
+			ENDCG
+		}
+
+		Pass {
+			Tags {
+				"LightMode" = "ShadowCaster"
+			}
+
+			CGPROGRAM
+			#pragma target 3.0
+
+			#pragma multi_compile_shadowcaster
+
+			#pragma vertex ShadowVertexProgram
+			#pragma fragment ShadowFragmentProgram
+
+			#include "UnityBRDFShadow.cginc"
 
 			ENDCG
 		}

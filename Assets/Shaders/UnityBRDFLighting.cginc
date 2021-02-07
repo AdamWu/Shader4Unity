@@ -1,8 +1,8 @@
-#if !defined(MY_LIGHTING_INCLUDED)
-#define MY_LIGHTING_INCLUDED
+#if !defined(UNITY_BRDF_LIGHTING_INCLUDED)
+#define UNITY_BRDF_LIGHTING_INCLUDED
 
-#include "AutoLight.cginc"
 #include "UnityPBSLighting.cginc"
+#include "AutoLight.cginc"
 
 struct a2v
 {
@@ -19,8 +19,9 @@ struct v2f
 	float3 normal : TEXCOORD1;
 	float4 tangent : TEXCOORD2;
 	float3 worldPos : TEXCOORD3;
+	SHADOW_COORDS(4)
 #if defined(VERTEXLIGHT_ON)
-	float3 vertexLightColor : TEXCOORD4;
+	float3 vertexLightColor : TEXCOORD5;
 #endif
 };
 
@@ -41,6 +42,8 @@ v2f vert(a2v v)
 	o.normal = UnityObjectToWorldNormal(v.normal);
 	o.tangent = float4(UnityObjectToWorldDir(v.tangent.xyz), v.tangent.w);
 
+	TRANSFER_SHADOW(o);
+
 #if defined(VERTEXLIGHT_ON)
 	o.vertexLightColor = Shade4PointLights(
 		unity_4LightPosX0, unity_4LightPosY0, unity_4LightPosZ0,
@@ -48,7 +51,6 @@ v2f vert(a2v v)
 		unity_LightColor[2].rgb, unity_LightColor[3].rgb,
 		unity_4LightAtten0, o.worldPos, o.normal
 	);
-	//o.vertexLightColor = unity_LightColor[0].rgb;
 #endif
 	return o;
 }
@@ -57,12 +59,21 @@ UnityLight CreateLight(v2f i)
 {
 	UnityLight light;
 
-#if defined(POINT) || defined(SPOT)
+#if defined(POINT) || defined(SPOT) || defined(POINT_COOKIE)
 	light.dir = normalize(_WorldSpaceLightPos0.xyz - i.worldPos);
 #else
 	light.dir = _WorldSpaceLightPos0.xyz;
 #endif
+
+#if defined(SHADOWS_SCREEN)
+	//float attenuation = tex2D(_ShadowMapTexture, i._ShadowCoord.xy / i._ShadowCoord.w);
+	float attenuation = SHADOW_ATTENUATION(i);
+#else
 	UNITY_LIGHT_ATTENUATION(attenuation, 0, i.worldPos);
+#endif
+	// equal to this
+	//UNITY_LIGHT_ATTENUATION(attenuation, i, i.worldPos);
+
 	light.color = _LightColor0.rgb * attenuation;
 	light.ndotl = DotClamped(i.normal, light.dir);
 	return light;
