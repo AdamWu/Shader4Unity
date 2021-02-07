@@ -2,10 +2,12 @@ Shader "Custom/UnityBRDF"
 {
 	Properties
 	{
-		_Metallic("_Metallic",Range(0,1)) = 0
-		_DiffuseColor("DiffuseColor",Color) = (1,1,1,1)
+		_Tint("Tint",Color) = (1,1,1,1)
 		_MainTex("Texture", 2D) = "white" {}
+		_Metallic("Metallic",Range(0,1)) = 0
 		_Smoothness("Smoothness",Range(0,1)) = 0
+		_NormalMap("Bump Map", 2D) = "bump" {}
+		_BumpScale("Bump Scale", Float) = 1
 	}
 	SubShader
 	{

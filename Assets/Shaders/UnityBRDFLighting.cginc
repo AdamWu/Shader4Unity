@@ -8,17 +8,19 @@ struct a2v
 {
 	float4 vertex : POSITION;
 	float2 uv : TEXCOORD0;
-	float3 normal:NORMAL;
+	float3 normal : NORMAL;
+	float4 tangent : TANGENT;
 };
 
 struct v2f
 {
 	float4 pos : SV_POSITION;
-	float3 normal:TEXCOORD1;
 	float2 uv : TEXCOORD0;
-	float3 worldPos:TEXCOORD2;
+	float3 normal : TEXCOORD1;
+	float4 tangent : TEXCOORD2;
+	float3 worldPos : TEXCOORD3;
 #if defined(VERTEXLIGHT_ON)
-	float3 vertexLightColor : TEXCOORD3;
+	float3 vertexLightColor : TEXCOORD4;
 #endif
 };
 
@@ -26,7 +28,9 @@ sampler2D _MainTex;
 float4 _MainTex_ST;
 float _Metallic;
 float _Smoothness;
-fixed3 _DiffuseColor;
+fixed3 _Tint;
+sampler2D _NormalMap;
+float _BumpScale;
 
 v2f vert(a2v v)
 {
@@ -35,6 +39,8 @@ v2f vert(a2v v)
 	o.uv = TRANSFORM_TEX(v.uv, _MainTex);
 	o.worldPos = mul(unity_ObjectToWorld, v.vertex);
 	o.normal = UnityObjectToWorldNormal(v.normal);
+	o.tangent = float4(UnityObjectToWorldDir(v.tangent.xyz), v.tangent.w);
+
 #if defined(VERTEXLIGHT_ON)
 	o.vertexLightColor = Shade4PointLights(
 		unity_4LightPosX0, unity_4LightPosY0, unity_4LightPosZ0,
@@ -78,13 +84,28 @@ UnityIndirect CreateIndirectLight(v2f i) {
 	return indirectLight;
 }
 
+void CalculateFragmentNormal(inout v2f i)
+{
+	float3 normal = UnpackScaleNormal(tex2D(_NormalMap, i.uv), _BumpScale);
+	float3 tangentSpaceNormal = normal.xzy;
+	float3 binormal = cross(i.normal, i.tangent.xyz) * i.tangent.w;
+	
+	i.normal = normalize(
+		tangentSpaceNormal.x * i.tangent +
+		tangentSpaceNormal.y * i.normal +
+		tangentSpaceNormal.z * binormal
+	);
+	i.normal = normalize(i.normal);
+}
+
 fixed4 frag(v2f i) : SV_Target
 {
-	i.normal = normalize(i.normal);
+	CalculateFragmentNormal(i);
+
 	float3 viewDir = normalize(_WorldSpaceCameraPos - i.worldPos);
 	//float3 viewDir = normalize(UnityWorldSpaceViewDir(i.worldPos));
 
-	fixed3 albedo = tex2D(_MainTex,i.uv).xyz*_DiffuseColor.xyz;
+	fixed3 albedo = tex2D(_MainTex,i.uv).xyz*_Tint.xyz;
 
 	half3 specColor;
 	half oneMinusReflectivity;
