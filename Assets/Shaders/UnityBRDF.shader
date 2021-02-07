@@ -16,7 +16,8 @@ Shader "Custom/UnityBRDF"
 			CGPROGRAM
 			#pragma target 3.0
 
-			#pragma multi_compile _ VERTEXLIGHT_ON
+			#define FORWARD_BASE_PASS
+			#pragma multi_compile VERTEXLIGHT_ON
 
 			#pragma vertex vert
 			#pragma fragment frag
@@ -35,7 +36,7 @@ Shader "Custom/UnityBRDF"
 
 			CGPROGRAM
 			#pragma target 3.0
-			
+
 			// different light variant
 			#pragma multi_compile DIRECTIONAL POINT SPOT
 

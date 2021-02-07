@@ -42,7 +42,7 @@ v2f vert(a2v v)
 		unity_LightColor[2].rgb, unity_LightColor[3].rgb,
 		unity_4LightAtten0, o.worldPos, o.normal
 	);
-	o.vertexLightColor = unity_LightColor[0].rgb;
+	//o.vertexLightColor = unity_LightColor[0].rgb;
 #endif
 	return o;
 }
@@ -67,13 +67,13 @@ UnityIndirect CreateIndirectLight(v2f i) {
 	indirectLight.diffuse = 0;
 	indirectLight.specular = 0;
 
+	// four vertex light
 #if defined(VERTEXLIGHT_ON)
-	float3 lightPos = float3( unity_4LightPosX0.x, unity_4LightPosY0.x, unity_4LightPosZ0.x);
-	float3 lightVec = lightPos - i.worldPos;
-	float3 lightDir = normalize(lightVec);
-	float ndotl = DotClamped(i.normal, lightDir);
-	float attenuation = 1 / (1 + dot(lightVec, lightVec) * unity_4LightAtten0.x);
-	indirectLight.diffuse = i.vertexLightColor * ndotl * attenuation;
+	indirectLight.diffuse = i.vertexLightColor;
+#endif
+	// other SH light
+#if defined(FORWARD_BASE_PASS)
+	indirectLight.diffuse += max(0, ShadeSH9(float4(i.normal, 1)));
 #endif
 	return indirectLight;
 }
@@ -90,6 +90,9 @@ fixed4 frag(v2f i) : SV_Target
 	half oneMinusReflectivity;
 	albedo = DiffuseAndSpecularFromMetallic(albedo,_Metallic,specColor,oneMinusReflectivity);
 	
+	float3 shColor = ShadeSH9(float4(i.normal, 1));
+	//return float4(shColor, 1);
+
 	return UNITY_BRDF_PBS(albedo,specColor,oneMinusReflectivity, _Smoothness, i.normal, viewDir, CreateLight(i), CreateIndirectLight(i));
 }
 
