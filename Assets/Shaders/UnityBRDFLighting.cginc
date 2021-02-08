@@ -1,3 +1,5 @@
+// Upgrade NOTE: replaced 'UNITY_PASS_TEXCUBE(unity_SpecCube1)' with 'UNITY_PASS_TEXCUBE_SAMPLER(unity_SpecCube1,unity_SpecCube0)'
+
 #if !defined(UNITY_BRDF_LIGHTING_INCLUDED)
 #define UNITY_BRDF_LIGHTING_INCLUDED
 
@@ -79,7 +81,16 @@ UnityLight CreateLight(v2f i)
 	return light;
 }
 
-UnityIndirect CreateIndirectLight(v2f i) {
+float3 BoxProjection(
+	float3 direction, float3 position,
+	float3 cubemapPosition, float3 boxMin, float3 boxMax
+) {
+	float3 factors = ((direction > 0 ? boxMax : boxMin) - position) / direction;
+	float scalar = min(min(factors.x, factors.y), factors.z);
+	return direction * scalar + (position - cubemapPosition);
+}
+
+UnityIndirect CreateIndirectLight(v2f i, float3 viewDir) {
 	UnityIndirect indirectLight;
 	indirectLight.diffuse = 0;
 	indirectLight.specular = 0;
@@ -91,6 +102,24 @@ UnityIndirect CreateIndirectLight(v2f i) {
 	// other SH light
 #if defined(FORWARD_BASE_PASS)
 	indirectLight.diffuse += max(0, ShadeSH9(float4(i.normal, 1)));
+
+	// reflection probes
+	float3 reflectionDir = reflect(-viewDir, i.normal);
+	Unity_GlossyEnvironmentData envData;
+	envData.roughness = 1 - _Smoothness;
+	envData.reflUVW = BoxProjection(
+		reflectionDir, i.worldPos,
+		unity_SpecCube0_ProbePosition,
+		unity_SpecCube0_BoxMin, unity_SpecCube0_BoxMax
+	);
+	float3 probe0 = Unity_GlossyEnvironment(UNITY_PASS_TEXCUBE(unity_SpecCube0), unity_SpecCube0_HDR, envData);
+	envData.reflUVW = BoxProjection(
+		reflectionDir, i.worldPos,
+		unity_SpecCube1_ProbePosition,
+		unity_SpecCube1_BoxMin, unity_SpecCube1_BoxMax
+	);
+	float3 probe1 = Unity_GlossyEnvironment(UNITY_PASS_TEXCUBE_SAMPLER(unity_SpecCube1,unity_SpecCube0), unity_SpecCube1_HDR, envData);
+	indirectLight.specular = lerp(probe1, probe0, unity_SpecCube0_BoxMin.w);
 #endif
 	return indirectLight;
 }
@@ -125,7 +154,7 @@ fixed4 frag(v2f i) : SV_Target
 	float3 shColor = ShadeSH9(float4(i.normal, 1));
 	//return float4(shColor, 1);
 
-	return UNITY_BRDF_PBS(albedo,specColor,oneMinusReflectivity, _Smoothness, i.normal, viewDir, CreateLight(i), CreateIndirectLight(i));
+	return UNITY_BRDF_PBS(albedo,specColor,oneMinusReflectivity, _Smoothness, i.normal, viewDir, CreateLight(i), CreateIndirectLight(i, viewDir));
 }
 
 #endif

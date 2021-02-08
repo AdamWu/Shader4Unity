@@ -4,8 +4,8 @@ Shader "Custom/UnityBRDF"
 	{
 		_Tint("Tint",Color) = (1,1,1,1)
 		_MainTex("Texture", 2D) = "white" {}
-		_Metallic("Metallic",Range(0,1)) = 0
-		_Smoothness("Smoothness",Range(0,1)) = 0
+		_Metallic("Metallic", Range(0,1)) = 0
+		_Smoothness("Smoothness", Range(0,1)) = 0.5
 		_NormalMap("Bump Map", 2D) = "bump" {}
 		_BumpScale("Bump Scale", Float) = 1
 	}
