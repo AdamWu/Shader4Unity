@@ -29,11 +29,14 @@ struct v2f
 
 sampler2D _MainTex;
 float4 _MainTex_ST;
+sampler2D _MetallicMap;
 float _Metallic;
 float _Smoothness;
 fixed3 _Tint;
 sampler2D _NormalMap;
 float _BumpScale;
+sampler2D _EmissionMap;
+float3 _Emission;
 
 v2f vert(a2v v)
 {
@@ -55,6 +58,39 @@ v2f vert(a2v v)
 	);
 #endif
 	return o;
+}
+
+float GetMetallic(v2f i)
+{
+#if defined(_METALLIC_MAP)
+	return tex2D(_MetallicMap, i.uv.xy).r;
+#else
+	return _Metallic;
+#endif
+}
+
+float GetSmoothness(v2f i)
+{
+	float smoothness = 1;
+#if defined(_SMOOTHNESS_ALBEDO)
+	smoothness = tex2D(_MainTex, i.uv.xy).a;
+#elif defined(_SMOOTHNESS_METALLIC) && defined(_METALLIC_MAP)
+	smoothness = tex2D(_MetallicMap, i.uv.xy).a;
+#endif
+	return smoothness * _Smoothness;
+}
+
+float3 GetEmission(v2f i)
+{
+#if defined(FORWARD_BASE_PASS)
+#if defined(_EMISSION_MAP)
+	return tex2D(_EmissionMap, i.uv.xy) * _Emission;
+#else
+	return _Emission;
+#endif
+#else
+	return 0;
+#endif
 }
 
 UnityLight CreateLight(v2f i)
@@ -106,7 +142,7 @@ UnityIndirect CreateIndirectLight(v2f i, float3 viewDir) {
 	// reflection probes
 	float3 reflectionDir = reflect(-viewDir, i.normal);
 	Unity_GlossyEnvironmentData envData;
-	envData.roughness = 1 - _Smoothness;
+	envData.roughness = 1 - GetSmoothness(i);
 	envData.reflUVW = BoxProjection(
 		reflectionDir, i.worldPos,
 		unity_SpecCube0_ProbePosition,
@@ -149,12 +185,18 @@ fixed4 frag(v2f i) : SV_Target
 
 	half3 specColor;
 	half oneMinusReflectivity;
-	albedo = DiffuseAndSpecularFromMetallic(albedo,_Metallic,specColor,oneMinusReflectivity);
+	albedo = DiffuseAndSpecularFromMetallic(albedo, GetMetallic(i), specColor, oneMinusReflectivity);
 	
 	float3 shColor = ShadeSH9(float4(i.normal, 1));
 	//return float4(shColor, 1);
 
-	return UNITY_BRDF_PBS(albedo,specColor,oneMinusReflectivity, _Smoothness, i.normal, viewDir, CreateLight(i), CreateIndirectLight(i, viewDir));
+	float4 color = UNITY_BRDF_PBS(albedo,specColor,
+		oneMinusReflectivity, GetSmoothness(i),
+		i.normal, viewDir, 
+		CreateLight(i), CreateIndirectLight(i, viewDir));
+
+	color.rgb += GetEmission(i);
+	return color;
 }
 
 #endif

@@ -7,9 +7,9 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: UnityPBRReflection
+  m_Name: Circuitry2
   m_Shader: {fileID: 4800000, guid: 2ceb2619f4ee75e4ca7985e8660c67ac, type: 3}
-  m_ShaderKeywords: 
+  m_ShaderKeywords: _METALLICGLOSSMAP _METALLIC_MAP _NORMALMAP _SMOOTHNESS_METALLIC
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
@@ -20,7 +20,7 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _BumpMap:
-        m_Texture: {fileID: 0}
+        m_Texture: {fileID: 2800000, guid: f3fb4ef64f39b61468680729713fc8d0, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _DetailAlbedoMap:
@@ -44,15 +44,19 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
-        m_Texture: {fileID: 0}
+        m_Texture: {fileID: 2800000, guid: a9d0eef3b55cc254b8d82ac0f1fa8fed, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MetallicGlossMap:
-        m_Texture: {fileID: 0}
+        m_Texture: {fileID: 2800000, guid: 4d88b9a89170db44ead88312a3194895, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MetallicMap:
+        m_Texture: {fileID: 2800000, guid: 4d88b9a89170db44ead88312a3194895, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _NormalMap:
-        m_Texture: {fileID: 0}
+        m_Texture: {fileID: 2800000, guid: f3fb4ef64f39b61468680729713fc8d0, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _OcclusionMap:
@@ -69,10 +73,10 @@ Material:
     - _DetailBumpScale: 1
     - _DetailNormalMapScale: 1
     - _DstBlend: 0
-    - _GlossMapScale: 1
-    - _Glossiness: 1
+    - _GlossMapScale: 0.599
+    - _Glossiness: 0.5
     - _GlossyReflections: 1
-    - _Metallic: 0
+    - _Metallic: 0.388
     - _Mode: 0
     - _OcclusionStrength: 1
     - _Parallax: 0.02
