@@ -17,7 +17,7 @@ struct a2v
 struct v2f
 {
 	float4 pos : SV_POSITION;
-	float2 uv : TEXCOORD0;
+	float4 uv : TEXCOORD0;
 	float3 normal : TEXCOORD1;
 	float4 tangent : TEXCOORD2;
 	float3 worldPos : TEXCOORD3;
@@ -27,22 +27,25 @@ struct v2f
 #endif
 };
 
-sampler2D _MainTex;
-float4 _MainTex_ST;
+sampler2D _MainTex, _DetailTex, _DetailMask;
+float4 _MainTex_ST, _DetailTex_ST;
 sampler2D _MetallicMap;
 float _Metallic;
 float _Smoothness;
 fixed3 _Tint;
-sampler2D _NormalMap;
-float _BumpScale;
+sampler2D _NormalMap, _DetailNormalMap;
+float _BumpScale, _DetailBumpScale;
 sampler2D _EmissionMap;
 float3 _Emission;
+sampler2D _OcclusionMap;
+float _OcclusionStrength;
 
 v2f vert(a2v v)
 {
 	v2f o;
 	o.pos = UnityObjectToClipPos(v.vertex);
-	o.uv = TRANSFORM_TEX(v.uv, _MainTex);
+	o.uv.xy = TRANSFORM_TEX(v.uv, _MainTex);
+	o.uv.zw = TRANSFORM_TEX(v.uv, _DetailTex);
 	o.worldPos = mul(unity_ObjectToWorld, v.vertex);
 	o.normal = UnityObjectToWorldNormal(v.normal);
 	o.tangent = float4(UnityObjectToWorldDir(v.tangent.xyz), v.tangent.w);
@@ -92,6 +95,28 @@ float3 GetEmission(v2f i)
 	return 0;
 #endif
 }
+float GetOcclusion(v2f i) {
+#if defined(_OCCLUSION_MAP)
+	return lerp(1, tex2D(_OcclusionMap, i.uv.xy).g, _OcclusionStrength);
+#else
+	return 1;
+#endif
+}
+float GetDetailMask(v2f i) {
+#if defined (_DETAIL_MASK)
+	return tex2D(_DetailMask, i.uv.xy).a;
+#else
+	return 1;
+#endif
+}
+float3 GetAlbedo(v2f i) {
+	float3 albedo = tex2D(_MainTex, i.uv.xy).rgb * _Tint.rgb;
+#if defined (_DETAIL_ALBEDO_MAP)
+	float3 details = tex2D(_DetailTex, i.uv.zw) * unity_ColorSpaceDouble;
+	albedo = lerp(albedo, albedo * details, GetDetailMask(i));
+#endif
+	return albedo;
+}
 
 UnityLight CreateLight(v2f i)
 {
@@ -102,16 +127,16 @@ UnityLight CreateLight(v2f i)
 #else
 	light.dir = _WorldSpaceLightPos0.xyz;
 #endif
-
+/*
 #if defined(SHADOWS_SCREEN)
 	//float attenuation = tex2D(_ShadowMapTexture, i._ShadowCoord.xy / i._ShadowCoord.w);
 	float attenuation = SHADOW_ATTENUATION(i);
 #else
 	UNITY_LIGHT_ATTENUATION(attenuation, 0, i.worldPos);
 #endif
-	// equal to this
-	//UNITY_LIGHT_ATTENUATION(attenuation, i, i.worldPos);
-
+*/
+	UNITY_LIGHT_ATTENUATION(attenuation, i, i.worldPos);
+	//attenuation *= GetOcclusion(i);// direct light donnot need occlusion
 	light.color = _LightColor0.rgb * attenuation;
 	light.ndotl = DotClamped(i.normal, light.dir);
 	return light;
@@ -156,20 +181,33 @@ UnityIndirect CreateIndirectLight(v2f i, float3 viewDir) {
 	);
 	float3 probe1 = Unity_GlossyEnvironment(UNITY_PASS_TEXCUBE_SAMPLER(unity_SpecCube1,unity_SpecCube0), unity_SpecCube1_HDR, envData);
 	indirectLight.specular = lerp(probe1, probe0, unity_SpecCube0_BoxMin.w);
+
+	// occlusion
+	float occlusion = GetOcclusion(i);
+	indirectLight.diffuse *= occlusion;
+	indirectLight.specular *= occlusion;
 #endif
 	return indirectLight;
 }
 
 void CalculateFragmentNormal(inout v2f i)
 {
-	float3 normal = UnpackScaleNormal(tex2D(_NormalMap, i.uv), _BumpScale);
-	float3 tangentSpaceNormal = normal.xzy;
-	float3 binormal = cross(i.normal, i.tangent.xyz) * i.tangent.w;
+	float3 tangentSpaceNormal = float3(0, 0, 1);
+#if defined(_NORMAL_MAP)
+	tangentSpaceNormal = UnpackScaleNormal(tex2D(_NormalMap, i.uv.xy), _BumpScale);
+#endif
+#if defined(_DETAIL_NORMAL_MAP)
+	float3 detailNormal = UnpackScaleNormal(tex2D(_DetailNormalMap, i.uv.zw), _DetailBumpScale);
+	detailNormal = lerp(float3(0, 0, 1), detailNormal, GetDetailMask(i));
+	tangentSpaceNormal = BlendNormals(tangentSpaceNormal, detailNormal);
+#endif
+
+	float3 binormal = cross(i.normal, i.tangent.xyz) * (i.tangent.w * unity_WorldTransformParams.w);
 	
 	i.normal = normalize(
 		tangentSpaceNormal.x * i.tangent +
-		tangentSpaceNormal.y * i.normal +
-		tangentSpaceNormal.z * binormal
+		tangentSpaceNormal.y * binormal +
+		tangentSpaceNormal.z * i.normal
 	);
 	i.normal = normalize(i.normal);
 }
@@ -181,11 +219,9 @@ fixed4 frag(v2f i) : SV_Target
 	float3 viewDir = normalize(_WorldSpaceCameraPos - i.worldPos);
 	//float3 viewDir = normalize(UnityWorldSpaceViewDir(i.worldPos));
 
-	fixed3 albedo = tex2D(_MainTex,i.uv).xyz*_Tint.xyz;
-
 	half3 specColor;
 	half oneMinusReflectivity;
-	albedo = DiffuseAndSpecularFromMetallic(albedo, GetMetallic(i), specColor, oneMinusReflectivity);
+	float3 albedo = DiffuseAndSpecularFromMetallic(GetAlbedo(i), GetMetallic(i), specColor, oneMinusReflectivity);
 	
 	float3 shColor = ShadeSH9(float4(i.normal, 1));
 	//return float4(shColor, 1);

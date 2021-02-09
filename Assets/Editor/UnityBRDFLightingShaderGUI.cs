@@ -87,8 +87,13 @@ public class UnityBRDFLightingShaderGUI : ShaderGUI
 
         // normal
         MaterialProperty normal = FindProperty("_NormalMap");
+        EditorGUI.BeginChangeCheck();
         editor.TexturePropertySingleLine(MakeLabel(normal), normal, FindProperty("_BumpScale"));
-        
+        if (EditorGUI.EndChangeCheck())
+        {
+            SetKeyword("_NORMAL_MAP", normal.textureValue);
+        }
+
         // emission
         MaterialProperty emission = FindProperty("_EmissionMap");
         EditorGUI.BeginChangeCheck();
@@ -101,20 +106,53 @@ public class UnityBRDFLightingShaderGUI : ShaderGUI
             SetKeyword("_EMISSION_MAP", emission.textureValue);
         }
 
+        // occlusion
+        MaterialProperty occlusion = FindProperty("_OcclusionMap");
+        EditorGUI.BeginChangeCheck();
+        editor.TexturePropertySingleLine(
+            MakeLabel(occlusion, "Occlusion (G)"), occlusion,
+            occlusion.textureValue ? FindProperty("_OcclusionStrength") : null
+        );
+        if (EditorGUI.EndChangeCheck())
+        {
+            SetKeyword("_OCCLUSION_MAP", occlusion.textureValue);
+        }
+
+        // detail mask
+        MaterialProperty detailmask = FindProperty("_DetailMask");
+        EditorGUI.BeginChangeCheck();
+        editor.TexturePropertySingleLine(
+            MakeLabel(detailmask, "Detail Mask (A)"), detailmask
+        );
+        if (EditorGUI.EndChangeCheck())
+        {
+            SetKeyword("_DETAIL_MASK", detailmask.textureValue);
+        }
+
         editor.TextureScaleOffsetProperty(mainTex);
 
         // Second Maps
         GUILayout.Label("Secondary Maps", EditorStyles.boldLabel);
 
         MaterialProperty detailTex = FindProperty("_DetailTex");
+        EditorGUI.BeginChangeCheck();
         editor.TexturePropertySingleLine(
             MakeLabel(detailTex, "Albedo (RGB) multiplied by 2"), detailTex
         );
+        if (EditorGUI.EndChangeCheck())
+        {
+            SetKeyword("_DETAIL_ALBEDO_MAP", detailTex.textureValue);
+        }
 
         MaterialProperty detailNormal = FindProperty("_DetailNormalMap");
+        EditorGUI.BeginChangeCheck();
         editor.TexturePropertySingleLine(
             MakeLabel(detailNormal), detailNormal, FindProperty("_DetailBumpScale")
         );
+        if (EditorGUI.EndChangeCheck())
+        {
+            SetKeyword("_DETAIL_NORMAL_MAP", detailNormal.textureValue);
+        }
 
         editor.TextureScaleOffsetProperty(detailTex);
     }
