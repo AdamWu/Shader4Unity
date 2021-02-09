@@ -27,12 +27,13 @@ struct v2f
 #endif
 };
 
+float4 _Tint;
+float _AlphaCutoff;
 sampler2D _MainTex, _DetailTex, _DetailMask;
 float4 _MainTex_ST, _DetailTex_ST;
 sampler2D _MetallicMap;
 float _Metallic;
 float _Smoothness;
-fixed3 _Tint;
 sampler2D _NormalMap, _DetailNormalMap;
 float _BumpScale, _DetailBumpScale;
 sampler2D _EmissionMap;
@@ -116,6 +117,13 @@ float3 GetAlbedo(v2f i) {
 	albedo = lerp(albedo, albedo * details, GetDetailMask(i));
 #endif
 	return albedo;
+}
+float GetAlpha(v2f i) {
+	float alpha = _Tint.a;
+#if !defined(_SMOOTHNESS_ALBEDO)
+	alpha *= tex2D(_MainTex, i.uv.xy).a;
+#endif
+	return alpha;
 }
 
 UnityLight CreateLight(v2f i)
@@ -214,6 +222,11 @@ void CalculateFragmentNormal(inout v2f i)
 
 fixed4 frag(v2f i) : SV_Target
 {
+	float alpha = GetAlpha(i);
+#if defined(_RENDERING_CUTOUT)
+	clip(alpha - _AlphaCutoff);
+#endif
+
 	CalculateFragmentNormal(i);
 
 	float3 viewDir = normalize(_WorldSpaceCameraPos - i.worldPos);
@@ -223,6 +236,11 @@ fixed4 frag(v2f i) : SV_Target
 	half oneMinusReflectivity;
 	float3 albedo = DiffuseAndSpecularFromMetallic(GetAlbedo(i), GetMetallic(i), specColor, oneMinusReflectivity);
 	
+#if defined(_RENDERING_TRANSPARENT)
+	albedo *= alpha;
+	alpha = 1 - oneMinusReflectivity + alpha * oneMinusReflectivity;
+#endif
+
 	float3 shColor = ShadeSH9(float4(i.normal, 1));
 	//return float4(shColor, 1);
 
@@ -232,6 +250,9 @@ fixed4 frag(v2f i) : SV_Target
 		CreateLight(i), CreateIndirectLight(i, viewDir));
 
 	color.rgb += GetEmission(i);
+#if defined(_RENDERING_FADE) || defined(_RENDERING_TRANSPARENT)
+	color.a = alpha;
+#endif
 	return color;
 }
 

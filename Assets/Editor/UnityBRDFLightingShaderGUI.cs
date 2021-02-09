@@ -1,8 +1,53 @@
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEditor;
 
 public class UnityBRDFLightingShaderGUI : ShaderGUI
 {
+    enum RenderingMode
+    {
+        Opaque, Cutout, Fade, Transparent
+    }
+
+    struct RenderingSettings
+    {
+        public RenderQueue queue;
+        public string renderType;
+        public BlendMode srcBlend, dstBlend;
+        public bool zWrite;
+
+        public static RenderingSettings[] modes = {
+            new RenderingSettings() {
+                queue = RenderQueue.Geometry,
+                renderType = "",
+                srcBlend = BlendMode.One,
+                dstBlend = BlendMode.Zero,
+                zWrite = true
+            },
+            new RenderingSettings() {
+                queue = RenderQueue.AlphaTest,
+                renderType = "TransparentCutout",
+                srcBlend = BlendMode.One,
+                dstBlend = BlendMode.Zero,
+                zWrite = true
+            },
+            new RenderingSettings() {
+                queue = RenderQueue.Transparent,
+                renderType = "Transparent",
+                srcBlend = BlendMode.SrcAlpha,
+                dstBlend = BlendMode.OneMinusSrcAlpha,
+                zWrite = false
+            },
+            new RenderingSettings() {
+                queue = RenderQueue.Transparent,
+                renderType = "Transparent",
+                srcBlend = BlendMode.One,
+                dstBlend = BlendMode.OneMinusSrcAlpha,
+                zWrite = false
+            }
+        };
+    }
+
     enum SmoothnessSource
     {
         Uniform, Albedo, Metallic
@@ -47,12 +92,54 @@ public class UnityBRDFLightingShaderGUI : ShaderGUI
         this.target = editor.target as Material;
         this.editor = editor;
         this.properties = properties;
+        
+        RenderingMode renderingMode = RenderingMode.Opaque;
+        if (IsKeywordEnabled("_RENDERING_CUTOUT"))
+        {
+            renderingMode = RenderingMode.Cutout;
+        }
+        else if (IsKeywordEnabled("_RENDERING_FADE"))
+        {
+            renderingMode = RenderingMode.Fade;
+        }
+        else if (IsKeywordEnabled("_RENDERING_TRANSPARENT"))
+        {
+            renderingMode = RenderingMode.Transparent;
+        }
 
-        // Second Maps
+        EditorGUI.BeginChangeCheck();
+        renderingMode = (RenderingMode)EditorGUILayout.EnumPopup( "Rendering Mode", renderingMode);
+        if (EditorGUI.EndChangeCheck())
+        {
+            editor.RegisterPropertyChangeUndo("Rendering Mode");
+            SetKeyword("_RENDERING_CUTOUT", renderingMode == RenderingMode.Cutout);
+            SetKeyword("_RENDERING_FADE", renderingMode == RenderingMode.Fade);
+            SetKeyword("_RENDERING_TRANSPARENT", renderingMode == RenderingMode.Transparent);
+            RenderingSettings settings = RenderingSettings.modes[(int)renderingMode];
+            foreach (Material m in editor.targets)
+            {
+                m.renderQueue = (int)settings.queue;
+                m.SetOverrideTag("RenderType", settings.renderType);
+                m.SetInt("_SrcBlend", (int)settings.srcBlend);
+                m.SetInt("_DstBlend", (int)settings.dstBlend);
+                m.SetInt("_ZWrite", settings.zWrite ? 1 : 0);
+            }
+        }
+
+        // Main Maps
         GUILayout.Label("Main Maps", EditorStyles.boldLabel);
         MaterialProperty mainTex = FindProperty("_MainTex");
         editor.TexturePropertySingleLine(MakeLabel(mainTex, "Albedo (RGB)"), mainTex, FindProperty("_Tint"));
 
+        // cutout
+        if (renderingMode == RenderingMode.Cutout)
+        {
+            MaterialProperty alphatCutoff = FindProperty("_AlphaCutoff");
+            EditorGUI.indentLevel += 2;
+            editor.ShaderProperty(alphatCutoff, MakeLabel(alphatCutoff));
+            EditorGUI.indentLevel -= 2;
+        }
+        
         // metallic
         MaterialProperty metallic = FindProperty("_MetallicMap");
         EditorGUI.BeginChangeCheck();

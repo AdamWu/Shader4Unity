@@ -1,9 +1,10 @@
 Shader "Custom/UnityBRDF"
 {
 	Properties
-	{
+	{ 
 		_Tint("Tint",Color) = (1,1,1,1)
 		_MainTex("Albedo", 2D) = "white" {}
+		_AlphaCutoff("Alpha Cutoff", Range(0, 1)) = 0.5
 		[NoScaleOffset] _MetallicMap("Metallic", 2D) = "white" {}
 		[Gamma] _Metallic("Metallic", Range(0,1)) = 0
 		_Smoothness("Smoothness", Range(0,1)) = 0.5
@@ -18,13 +19,21 @@ Shader "Custom/UnityBRDF"
 		_DetailTex("Detail Albedo", 2D) = "white" {}
 		_DetailNormalMap("Detail Normal Map", 2D) = "bump" {}
 		_DetailBumpScale("Detail Bump Scale", Float) = 1
+
+
+		[HideInInspector] _SrcBlend("_SrcBlend", Float) = 1
+		[HideInInspector] _DstBlend("_DstBlend", Float) = 0
+		[HideInInspector] _ZWrite("_ZWrite", Float) = 1
 	}
 	SubShader
 	{
 		Pass
 		{
 			Tags{"LightMode" = "ForwardBase"}
-				
+
+			Blend [_SrcBlend] [_DstBlend]
+			ZWrite [_ZWrite]
+
 			CGPROGRAM
 			#pragma target 3.0
 
@@ -32,6 +41,7 @@ Shader "Custom/UnityBRDF"
 			#pragma multi_compile __ VERTEXLIGHT_ON	// for vertex light
 			#pragma multi_compile __ SHADOWS_SCREEN	// only for directional light
 
+			#pragma shader_feature __ _RENDERING_CUTOUT _RENDERING_FADE _RENDERING_TRANSPARENT
 			#pragma shader_feature _METALLIC_MAP
 			#pragma shader_feature _ _SMOOTHNESS_ALBEDO _SMOOTHNESS_METALLIC
 			#pragma shader_feature _NORMAL_MAP
@@ -53,7 +63,7 @@ Shader "Custom/UnityBRDF"
 		{
 			Tags{"LightMode" = "ForwardAdd"}
 
-			Blend One One
+			Blend [_SrcBlend] One
 			ZWrite Off
 
 			CGPROGRAM
@@ -61,8 +71,9 @@ Shader "Custom/UnityBRDF"
 			 
 			// different light variant
 			#pragma multi_compile DIRECTIONAL POINT SPOT
-			#pragma multi_compile_fwdadd_fullshadows	// for all lights
+			#pragma multi_compile_fwdadd_fullshadows
 
+			//#pragma shader_feature __ _RENDERING_CUTOUT _RENDERING_FADE _RENDERING_TRANSPARENT
 			#pragma shader_feature _METALLIC_MAP
 			#pragma shader_feature _ _SMOOTHNESS_ALBEDO _SMOOTHNESS_METALLIC
 			#pragma shader_feature _NORMAL_MAP
