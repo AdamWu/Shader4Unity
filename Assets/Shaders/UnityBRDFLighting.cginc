@@ -86,7 +86,7 @@ float GetSmoothness(v2f i)
 
 float3 GetEmission(v2f i)
 {
-#if defined(FORWARD_BASE_PASS)
+#if defined(FORWARD_BASE_PASS) || defined(DEFERRED_PASS)
 #if defined(_EMISSION_MAP)
 	return tex2D(_EmissionMap, i.uv.xy) * _Emission;
 #else
@@ -130,23 +130,29 @@ UnityLight CreateLight(v2f i)
 {
 	UnityLight light;
 
-#if defined(POINT) || defined(SPOT) || defined(POINT_COOKIE)
-	light.dir = normalize(_WorldSpaceLightPos0.xyz - i.worldPos);
+#if defined(DEFERRED_PASS)
+	light.dir = float3(0, 1, 0);
+	light.color = 0;
 #else
-	light.dir = _WorldSpaceLightPos0.xyz;
+
+	#if defined(POINT) || defined(SPOT) || defined(POINT_COOKIE)
+		light.dir = normalize(_WorldSpaceLightPos0.xyz - i.worldPos);
+	#else
+		light.dir = _WorldSpaceLightPos0.xyz;
+	#endif
+	/*
+	#if defined(SHADOWS_SCREEN)
+		//float attenuation = tex2D(_ShadowMapTexture, i._ShadowCoord.xy / i._ShadowCoord.w);
+		float attenuation = SHADOW_ATTENUATION(i);
+	#else
+		UNITY_LIGHT_ATTENUATION(attenuation, 0, i.worldPos);
+	#endif
+	*/
+		UNITY_LIGHT_ATTENUATION(attenuation, i, i.worldPos);
+		//attenuation *= GetOcclusion(i);// direct light donnot need occlusion
+		light.color = _LightColor0.rgb * attenuation;
 #endif
-/*
-#if defined(SHADOWS_SCREEN)
-	//float attenuation = tex2D(_ShadowMapTexture, i._ShadowCoord.xy / i._ShadowCoord.w);
-	float attenuation = SHADOW_ATTENUATION(i);
-#else
-	UNITY_LIGHT_ATTENUATION(attenuation, 0, i.worldPos);
-#endif
-*/
-	UNITY_LIGHT_ATTENUATION(attenuation, i, i.worldPos);
-	//attenuation *= GetOcclusion(i);// direct light donnot need occlusion
-	light.color = _LightColor0.rgb * attenuation;
-	light.ndotl = DotClamped(i.normal, light.dir);
+	//light.ndotl = DotClamped(i.normal, light.dir);
 	return light;
 }
 
@@ -169,7 +175,7 @@ UnityIndirect CreateIndirectLight(v2f i, float3 viewDir) {
 	indirectLight.diffuse = i.vertexLightColor;
 #endif
 	// other SH light
-#if defined(FORWARD_BASE_PASS)
+#if defined(FORWARD_BASE_PASS) || defined(DEFERRED_PASS)
 	indirectLight.diffuse += max(0, ShadeSH9(float4(i.normal, 1)));
 
 	// reflection probes
@@ -220,7 +226,18 @@ void CalculateFragmentNormal(inout v2f i)
 	i.normal = normalize(i.normal);
 }
 
-fixed4 frag(v2f i) : SV_Target
+struct FragmentOutput {
+#if defined(DEFERRED_PASS)
+	float4 gBuffer0 : SV_Target0;
+	float4 gBuffer1 : SV_Target1;
+	float4 gBuffer2 : SV_Target2;
+	float4 gBuffer3 : SV_Target3;
+#else
+	float4 color : SV_Target;
+#endif
+};
+
+FragmentOutput frag(v2f i)
 {
 	float alpha = GetAlpha(i);
 #if defined(_RENDERING_CUTOUT)
@@ -241,9 +258,6 @@ fixed4 frag(v2f i) : SV_Target
 	alpha = 1 - oneMinusReflectivity + alpha * oneMinusReflectivity;
 #endif
 
-	float3 shColor = ShadeSH9(float4(i.normal, 1));
-	//return float4(shColor, 1);
-
 	float4 color = UNITY_BRDF_PBS(albedo,specColor,
 		oneMinusReflectivity, GetSmoothness(i),
 		i.normal, viewDir, 
@@ -253,7 +267,22 @@ fixed4 frag(v2f i) : SV_Target
 #if defined(_RENDERING_FADE) || defined(_RENDERING_TRANSPARENT)
 	color.a = alpha;
 #endif
-	return color;
+
+	FragmentOutput output;
+#if defined(DEFERRED_PASS)
+	#if !defined(UNITY_HDR_ON)
+		color.rgb = exp2(-color.rgb);
+	#endif
+	output.gBuffer0.rgb = albedo;
+	output.gBuffer0.a = GetOcclusion(i);
+	output.gBuffer1.rgb = specColor;
+	output.gBuffer1.a = GetSmoothness(i);
+	output.gBuffer2 = float4(i.normal * 0.5 + 0.5, 1);
+	output.gBuffer3 = color;
+#else
+	output.color = color;
+#endif
+	return output;
 }
 
 #endif
