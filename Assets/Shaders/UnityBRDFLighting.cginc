@@ -6,6 +6,10 @@
 #include "UnityPBSLighting.cginc"
 #include "AutoLight.cginc"
 
+#if defined(FOG_LINEAR) || defined(FOG_EXP) || defined(FOG_EXP2)
+#define FOG_DEPTH 1
+#endif
+
 struct a2v
 {
 	float4 vertex : POSITION;
@@ -20,7 +24,11 @@ struct v2f
 	float4 uv : TEXCOORD0;
 	float3 normal : TEXCOORD1;
 	float4 tangent : TEXCOORD2;
+#if FOG_DEPTH
+	float4 worldPos : TEXCOORD3;
+#else
 	float3 worldPos : TEXCOORD3;
+#endif
 	SHADOW_COORDS(4)
 #if defined(VERTEXLIGHT_ON)
 	float3 vertexLightColor : TEXCOORD5;
@@ -47,7 +55,10 @@ v2f vert(a2v v)
 	o.pos = UnityObjectToClipPos(v.vertex);
 	o.uv.xy = TRANSFORM_TEX(v.uv, _MainTex);
 	o.uv.zw = TRANSFORM_TEX(v.uv, _DetailTex);
-	o.worldPos = mul(unity_ObjectToWorld, v.vertex);
+	o.worldPos.xyz = mul(unity_ObjectToWorld, v.vertex);
+#if FOG_DEPTH
+	o.worldPos.w = o.pos.z;
+#endif
 	o.normal = UnityObjectToWorldNormal(v.normal);
 	o.tangent = float4(UnityObjectToWorldDir(v.tangent.xyz), v.tangent.w);
 
@@ -58,7 +69,7 @@ v2f vert(a2v v)
 		unity_4LightPosX0, unity_4LightPosY0, unity_4LightPosZ0,
 		unity_LightColor[0].rgb, unity_LightColor[1].rgb,
 		unity_LightColor[2].rgb, unity_LightColor[3].rgb,
-		unity_4LightAtten0, o.worldPos, o.normal
+		unity_4LightAtten0, o.worldPos.xyz, o.normal
 	);
 #endif
 	return o;
@@ -136,7 +147,7 @@ UnityLight CreateLight(v2f i)
 #else
 
 	#if defined(POINT) || defined(SPOT) || defined(POINT_COOKIE)
-		light.dir = normalize(_WorldSpaceLightPos0.xyz - i.worldPos);
+		light.dir = normalize(_WorldSpaceLightPos0.xyz - i.worldPos.xyz);
 	#else
 		light.dir = _WorldSpaceLightPos0.xyz;
 	#endif
@@ -145,12 +156,12 @@ UnityLight CreateLight(v2f i)
 		//float attenuation = tex2D(_ShadowMapTexture, i._ShadowCoord.xy / i._ShadowCoord.w);
 		float attenuation = SHADOW_ATTENUATION(i);
 	#else
-		UNITY_LIGHT_ATTENUATION(attenuation, 0, i.worldPos);
+		UNITY_LIGHT_ATTENUATION(attenuation, 0, i.worldPos.xyz);
 	#endif
 	*/
-		UNITY_LIGHT_ATTENUATION(attenuation, i, i.worldPos);
-		//attenuation *= GetOcclusion(i);// direct light donnot need occlusion
-		light.color = _LightColor0.rgb * attenuation;
+	UNITY_LIGHT_ATTENUATION(attenuation, i, i.worldPos.xyz);
+	//attenuation *= GetOcclusion(i);// direct light donnot need occlusion
+	light.color = _LightColor0.rgb * attenuation;
 #endif
 	//light.ndotl = DotClamped(i.normal, light.dir);
 	return light;
@@ -183,13 +194,13 @@ UnityIndirect CreateIndirectLight(v2f i, float3 viewDir) {
 	Unity_GlossyEnvironmentData envData;
 	envData.roughness = 1 - GetSmoothness(i);
 	envData.reflUVW = BoxProjection(
-		reflectionDir, i.worldPos,
+		reflectionDir, i.worldPos.xyz,
 		unity_SpecCube0_ProbePosition,
 		unity_SpecCube0_BoxMin, unity_SpecCube0_BoxMax
 	);
 	float3 probe0 = Unity_GlossyEnvironment(UNITY_PASS_TEXCUBE(unity_SpecCube0), unity_SpecCube0_HDR, envData);
 	envData.reflUVW = BoxProjection(
-		reflectionDir, i.worldPos,
+		reflectionDir, i.worldPos.xyz,
 		unity_SpecCube1_ProbePosition,
 		unity_SpecCube1_BoxMin, unity_SpecCube1_BoxMax
 	);
@@ -226,6 +237,26 @@ void CalculateFragmentNormal(inout v2f i)
 	i.normal = normalize(i.normal);
 }
 
+float4 ApplyFog(float4 color, v2f i) {
+	float viewDistance = length(_WorldSpaceCameraPos - i.worldPos.xyz);
+#if FOG_DEPTH
+	viewDistance = UNITY_Z_0_FAR_FROM_CLIPSPACE(i.worldPos.w);
+#endif
+	UNITY_CALC_FOG_FACTOR_RAW(viewDistance);
+	unityFogFactor = saturate(unityFogFactor);
+	// fog disabled
+#if !defined(FOG_LINEAR) && !defined(FOG_EXP) && !defined(FOG_EXP2)
+	unityFogFactor = 1;
+#endif
+
+	float3 fogColor = 0;
+#if defined(FORWARD_BASE_PASS)
+	fogColor = unity_FogColor.rgb;
+#endif
+	color.rgb = lerp(fogColor, color.rgb, unityFogFactor);
+	return color;
+}
+
 struct FragmentOutput {
 #if defined(DEFERRED_PASS)
 	float4 gBuffer0 : SV_Target0;
@@ -246,8 +277,8 @@ FragmentOutput frag(v2f i)
 
 	CalculateFragmentNormal(i);
 
-	float3 viewDir = normalize(_WorldSpaceCameraPos - i.worldPos);
-	//float3 viewDir = normalize(UnityWorldSpaceViewDir(i.worldPos));
+	float3 viewDir = normalize(_WorldSpaceCameraPos - i.worldPos.xyz);
+	//float3 viewDir = normalize(UnityWorldSpaceViewDir(i.worldPos.xyz));
 
 	half3 specColor;
 	half oneMinusReflectivity;
@@ -280,7 +311,7 @@ FragmentOutput frag(v2f i)
 	output.gBuffer2 = float4(i.normal * 0.5 + 0.5, 1);
 	output.gBuffer3 = color;
 #else
-	output.color = color;
+	output.color = ApplyFog(color, i);
 #endif
 	return output;
 }

@@ -50,6 +50,8 @@ Shader "Custom/UnityBRDF"
 			#pragma shader_feature _DETAIL_MASK
 			#pragma shader_feature _DETAIL_ALBEDO_MAP
 			#pragma shader_feature _DETAIL_NORMAL_MAP
+			
+			#pragma multi_compile_fog
 
 			#pragma vertex vert
 			#pragma fragment frag
@@ -82,6 +84,8 @@ Shader "Custom/UnityBRDF"
 			#pragma shader_feature _DETAIL_MASK
 			#pragma shader_feature _DETAIL_ALBEDO_MAP
 			#pragma shader_feature _DETAIL_NORMAL_MAP
+
+			#pragma multi_compile_fog
 
 			#pragma vertex vert
 			#pragma fragment frag
