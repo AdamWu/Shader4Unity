@@ -2,7 +2,6 @@ Shader "Custom/DeferredShading"
 {
 	Properties
 	{
-
 	}
 
 	SubShader
@@ -10,8 +9,6 @@ Shader "Custom/DeferredShading"
 		Pass 
 		{
 			Blend[_SrcBlend][_DstBlend]
-			Cull Off
-			ZTest Always
 			ZWrite Off
 
 			CGPROGRAM
@@ -35,6 +32,7 @@ Shader "Custom/DeferredShading"
 			Cull Off
 			ZTest Always
 			ZWrite Off
+
 			Stencil {
 				Ref[_StencilNonBackground]
 				ReadMask[_StencilNonBackground]
