@@ -9,7 +9,7 @@ Material:
   m_PrefabAsset: {fileID: 0}
   m_Name: UnityPBR
   m_Shader: {fileID: 4800000, guid: 2ceb2619f4ee75e4ca7985e8660c67ac, type: 3}
-  m_ShaderKeywords: _SMOOTHNESS_METALLIC
+  m_ShaderKeywords: 
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0

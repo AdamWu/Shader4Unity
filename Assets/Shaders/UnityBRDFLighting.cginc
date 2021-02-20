@@ -7,7 +7,13 @@
 #include "AutoLight.cginc"
 
 #if defined(FOG_LINEAR) || defined(FOG_EXP) || defined(FOG_EXP2)
-#define FOG_DEPTH 1
+	#define FOG_DEPTH 1
+#endif
+
+#if defined(LIGHTMAP_ON) && defined(SHADOWS_SCREEN)
+	#if defined(LIGHTMAP_SHADOW_MIXING) && !defined(SHADOWS_SHADOWMASK)
+		#define SUBTRACTIVE_LIGHTING 1
+	#endif
 #endif
 
 struct a2v
@@ -30,7 +36,7 @@ struct v2f
 #else
 	float3 worldPos : TEXCOORD3;
 #endif
-	SHADOW_COORDS(4)
+	UNITY_SHADOW_COORDS(4)
 #if defined(VERTEXLIGHT_ON)
 	float3 vertexLightColor : TEXCOORD5;
 #endif
@@ -66,7 +72,7 @@ v2f vert(a2v v)
 	o.normal = UnityObjectToWorldNormal(v.normal);
 	o.tangent = float4(UnityObjectToWorldDir(v.tangent.xyz), v.tangent.w);
 
-	TRANSFER_SHADOW(o);
+	UNITY_TRANSFER_SHADOW(o, v.uv1);
 
 #if defined(VERTEXLIGHT_ON)
 	o.vertexLightColor = Shade4PointLights(
@@ -145,11 +151,37 @@ float GetAlpha(v2f i) {
 	return alpha;
 }
 
+float FadeShadows(v2f i, float attenuation)
+{
+#if HANDLE_SHADOWS_BLENDING_IN_GI
+	float viewZ = dot(_WorldSpaceCameraPos - i.worldPos, UNITY_MATRIX_V[2].xyz);
+	float shadowFadeDistance = UnityComputeShadowFadeDistance(i.worldPos, viewZ);
+	float shadowFade = UnityComputeShadowFade(shadowFadeDistance);
+	float bakedAttenuation = UnitySampleBakedOcclusion(i.lightmapUV, i.worldPos);
+	//attenuation = saturate(attenuation + shadowFade);
+	attenuation = UnityMixRealtimeAndBakedShadows(attenuation, bakedAttenuation, shadowFade);
+#endif
+	return attenuation;
+}
+void ApplySubtractiveLighting(v2f i, inout UnityIndirect indirectLight)
+{
+#if SUBTRACTIVE_LIGHTING
+	UNITY_LIGHT_ATTENUATION(attenuation, i, i.worldPos.xyz);
+	attenuation = FadeShadows(i, attenuation);
+	float ndotl = saturate(dot(i.normal, _WorldSpaceLightPos0.xyz));
+	float3 shadowedLightEstimate = ndotl * (1 - attenuation) * _LightColor0.rgb;
+	float3 subtractedLight = indirectLight.diffuse - shadowedLightEstimate;
+	subtractedLight = max(subtractedLight, unity_ShadowColor.rgb);
+	subtractedLight = lerp(subtractedLight, indirectLight.diffuse, _LightShadowData.x);
+	indirectLight.diffuse = min(subtractedLight, indirectLight.diffuse);
+#endif
+}
+
 UnityLight CreateLight(v2f i)
 {
 	UnityLight light;
 
-#if defined(DEFERRED_PASS)
+#if defined(DEFERRED_PASS) || defined(SUBTRACTIVE_LIGHTING)
 	light.dir = float3(0, 1, 0);
 	light.color = 0;
 #else
@@ -168,6 +200,7 @@ UnityLight CreateLight(v2f i)
 	#endif
 	*/
 	UNITY_LIGHT_ATTENUATION(attenuation, i, i.worldPos.xyz);
+	attenuation = FadeShadows(i, attenuation);
 	//attenuation *= GetOcclusion(i);// direct light donnot need occlusion
 	light.color = _LightColor0.rgb * attenuation;
 #endif
@@ -175,10 +208,8 @@ UnityLight CreateLight(v2f i)
 	return light;
 }
 
-float3 BoxProjection(
-	float3 direction, float3 position,
-	float3 cubemapPosition, float3 boxMin, float3 boxMax
-) {
+float3 BoxProjection(float3 direction, float3 position, float3 cubemapPosition, float3 boxMin, float3 boxMax)
+{
 	float3 factors = ((direction > 0 ? boxMax : boxMin) - position) / direction;
 	float scalar = min(min(factors.x, factors.y), factors.z);
 	return direction * scalar + (position - cubemapPosition);
@@ -201,6 +232,7 @@ UnityIndirect CreateIndirectLight(v2f i, float3 viewDir) {
 			float4 lightmapDirection = UNITY_SAMPLE_TEX2D_SAMPLER(unity_LightmapInd, unity_Lightmap, i.lightmapUV);
 			indirectLight.diffuse = DecodeDirectionalLightmap(indirectLight.diffuse, lightmapDirection, i.normal);
 		#endif
+		ApplySubtractiveLighting(i, indirectLight);
 	#else
 		indirectLight.diffuse += max(0, ShadeSH9(float4(i.normal, 1)));
 	#endif
@@ -279,6 +311,9 @@ struct FragmentOutput {
 	float4 gBuffer1 : SV_Target1;
 	float4 gBuffer2 : SV_Target2;
 	float4 gBuffer3 : SV_Target3;
+	#if defined(SHADOWS_SHADOWMASK) && (UNITY_ALLOWED_MRT_COUNT > 4)
+		float4 gBuffer4 : SV_Target4;
+	#endif
 #else
 	float4 color : SV_Target;
 #endif
@@ -326,6 +361,14 @@ FragmentOutput frag(v2f i)
 	output.gBuffer1.a = GetSmoothness(i);
 	output.gBuffer2 = float4(i.normal * 0.5 + 0.5, 1);
 	output.gBuffer3 = color;
+
+	#if defined(SHADOWS_SHADOWMASK) && (UNITY_ALLOWED_MRT_COUNT > 4)
+		float2 shadowUV = 0;
+		#if defined(LIGHTMAP_ON)
+			shadowUV = i.lightmapUV;
+		#endif
+		output.gBuffer4 = UnityGetRawBakedOcclusions(shadowUV, i.worldPos.xyz);
+	#endif
 #else
 	output.color = ApplyFog(color, i);
 #endif
