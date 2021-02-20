@@ -14,6 +14,7 @@ struct a2v
 {
 	float4 vertex : POSITION;
 	float2 uv : TEXCOORD0;
+	float2 uv1 : TEXCOORD1;
 	float3 normal : NORMAL;
 	float4 tangent : TANGENT;
 };
@@ -33,10 +34,13 @@ struct v2f
 #if defined(VERTEXLIGHT_ON)
 	float3 vertexLightColor : TEXCOORD5;
 #endif
+#if defined(LIGHTMAP_ON)
+	float2 lightmapUV : TEXCOORD5;
+#endif
 };
 
-float4 _Tint;
-float _AlphaCutoff;
+float4 _Color;
+float _Cutoff;
 sampler2D _MainTex, _DetailTex, _DetailMask;
 float4 _MainTex_ST, _DetailTex_ST;
 sampler2D _MetallicMap;
@@ -71,6 +75,10 @@ v2f vert(a2v v)
 		unity_LightColor[2].rgb, unity_LightColor[3].rgb,
 		unity_4LightAtten0, o.worldPos.xyz, o.normal
 	);
+#endif
+
+#if defined(LIGHTMAP_ON)
+	o.lightmapUV = v.uv1 * unity_LightmapST.xy + unity_LightmapST.zw;
 #endif
 	return o;
 }
@@ -122,7 +130,7 @@ float GetDetailMask(v2f i) {
 #endif
 }
 float3 GetAlbedo(v2f i) {
-	float3 albedo = tex2D(_MainTex, i.uv.xy).rgb * _Tint.rgb;
+	float3 albedo = tex2D(_MainTex, i.uv.xy).rgb * _Color.rgb;
 #if defined (_DETAIL_ALBEDO_MAP)
 	float3 details = tex2D(_DetailTex, i.uv.zw) * unity_ColorSpaceDouble;
 	albedo = lerp(albedo, albedo * details, GetDetailMask(i));
@@ -130,7 +138,7 @@ float3 GetAlbedo(v2f i) {
 	return albedo;
 }
 float GetAlpha(v2f i) {
-	float alpha = _Tint.a;
+	float alpha = _Color.a;
 #if !defined(_SMOOTHNESS_ALBEDO)
 	alpha *= tex2D(_MainTex, i.uv.xy).a;
 #endif
@@ -187,7 +195,15 @@ UnityIndirect CreateIndirectLight(v2f i, float3 viewDir) {
 #endif
 	// other SH light
 #if defined(FORWARD_BASE_PASS) || defined(DEFERRED_PASS)
-	indirectLight.diffuse += max(0, ShadeSH9(float4(i.normal, 1)));
+	#if defined(LIGHTMAP_ON)
+		indirectLight.diffuse = DecodeLightmap(UNITY_SAMPLE_TEX2D(unity_Lightmap, i.lightmapUV));
+		#if defined(DIRLIGHTMAP_COMBINED)
+			float4 lightmapDirection = UNITY_SAMPLE_TEX2D_SAMPLER(unity_LightmapInd, unity_Lightmap, i.lightmapUV);
+			indirectLight.diffuse = DecodeDirectionalLightmap(indirectLight.diffuse, lightmapDirection, i.normal);
+		#endif
+	#else
+		indirectLight.diffuse += max(0, ShadeSH9(float4(i.normal, 1)));
+	#endif
 
 	// reflection probes
 	float3 reflectionDir = reflect(-viewDir, i.normal);
@@ -272,7 +288,7 @@ FragmentOutput frag(v2f i)
 {
 	float alpha = GetAlpha(i);
 #if defined(_RENDERING_CUTOUT)
-	clip(alpha - _AlphaCutoff);
+	clip(alpha - _Cutoff);
 #endif
 
 	CalculateFragmentNormal(i);

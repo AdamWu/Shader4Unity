@@ -129,12 +129,12 @@ public class UnityBRDFLightingShaderGUI : ShaderGUI
         // Main Maps
         GUILayout.Label("Main Maps", EditorStyles.boldLabel);
         MaterialProperty mainTex = FindProperty("_MainTex");
-        editor.TexturePropertySingleLine(MakeLabel(mainTex, "Albedo (RGB)"), mainTex, FindProperty("_Tint"));
+        editor.TexturePropertySingleLine(MakeLabel(mainTex, "Albedo (RGB)"), mainTex, FindProperty("_Color"));
 
         // cutout
         if (renderingMode == RenderingMode.Cutout)
         {
-            MaterialProperty alphatCutoff = FindProperty("_AlphaCutoff");
+            MaterialProperty alphatCutoff = FindProperty("_Cutoff");
             EditorGUI.indentLevel += 2;
             editor.ShaderProperty(alphatCutoff, MakeLabel(alphatCutoff));
             EditorGUI.indentLevel -= 2;
@@ -191,6 +191,10 @@ public class UnityBRDFLightingShaderGUI : ShaderGUI
         if (EditorGUI.EndChangeCheck())
         {
             SetKeyword("_EMISSION_MAP", emission.textureValue);
+            foreach (Material m in editor.targets)
+            {
+                m.globalIlluminationFlags = MaterialGlobalIlluminationFlags.BakedEmissive;
+            }
         }
 
         // occlusion

@@ -2,9 +2,9 @@ Shader "Custom/UnityBRDF"
 {
 	Properties
 	{ 
-		_Tint("Tint",Color) = (1,1,1,1)
+		_Color("Color",Color) = (1,1,1,1)
 		_MainTex("Albedo", 2D) = "white" {}
-		_AlphaCutoff("Alpha Cutoff", Range(0, 1)) = 0.5
+		_Cutoff("Alpha Cutoff", Range(0, 1)) = 0.5
 		[NoScaleOffset] _MetallicMap("Metallic", 2D) = "white" {}
 		[Gamma] _Metallic("Metallic", Range(0,1)) = 0
 		_Smoothness("Smoothness", Range(0,1)) = 0.5
@@ -27,6 +27,7 @@ Shader "Custom/UnityBRDF"
 	}
 	SubShader
 	{
+		//  Base forward pass (directional light, emission, lightmaps, ...)
 		Pass
 		{
 			Tags{"LightMode" = "ForwardBase"}
@@ -38,10 +39,12 @@ Shader "Custom/UnityBRDF"
 			#pragma target 3.0
 
 			#define FORWARD_BASE_PASS
-			#pragma multi_compile __ VERTEXLIGHT_ON	// for vertex light
-			#pragma multi_compile __ SHADOWS_SCREEN	// only for directional light
+			#pragma multi_compile _ VERTEXLIGHT_ON	// for vertex light
+			#pragma multi_compile _ SHADOWS_SCREEN	// only for directional light
+			#pragma multi_compile_fwdbase // SHADOWS_SCREEN LIGHTMAP_ON DIRLIGHTMAP_COMBINED ...
+			#pragma multi_compile_fog
 
-			#pragma shader_feature __ _RENDERING_CUTOUT _RENDERING_FADE _RENDERING_TRANSPARENT
+			#pragma shader_feature _ _RENDERING_CUTOUT _RENDERING_FADE _RENDERING_TRANSPARENT
 			#pragma shader_feature _METALLIC_MAP
 			#pragma shader_feature _ _SMOOTHNESS_ALBEDO _SMOOTHNESS_METALLIC
 			#pragma shader_feature _NORMAL_MAP
@@ -50,8 +53,7 @@ Shader "Custom/UnityBRDF"
 			#pragma shader_feature _DETAIL_MASK
 			#pragma shader_feature _DETAIL_ALBEDO_MAP
 			#pragma shader_feature _DETAIL_NORMAL_MAP
-			
-			#pragma multi_compile_fog
+
 
 			#pragma vertex vert
 			#pragma fragment frag
@@ -60,7 +62,8 @@ Shader "Custom/UnityBRDF"
 
 			ENDCG
 		}
-
+		
+		//  Additive forward pass (one light per pass)
 		Pass
 		{
 			Tags{"LightMode" = "ForwardAdd"}
@@ -74,8 +77,9 @@ Shader "Custom/UnityBRDF"
 			// different light variant
 			#pragma multi_compile DIRECTIONAL POINT SPOT
 			#pragma multi_compile_fwdadd_fullshadows
+			#pragma multi_compile_fog
 
-			//#pragma shader_feature __ _RENDERING_CUTOUT _RENDERING_FADE _RENDERING_TRANSPARENT
+			//#pragma shader_feature _ _RENDERING_CUTOUT _RENDERING_FADE _RENDERING_TRANSPARENT
 			#pragma shader_feature _METALLIC_MAP
 			#pragma shader_feature _ _SMOOTHNESS_ALBEDO _SMOOTHNESS_METALLIC
 			#pragma shader_feature _NORMAL_MAP
@@ -85,8 +89,6 @@ Shader "Custom/UnityBRDF"
 			#pragma shader_feature _DETAIL_ALBEDO_MAP
 			#pragma shader_feature _DETAIL_NORMAL_MAP
 
-			#pragma multi_compile_fog
-
 			#pragma vertex vert
 			#pragma fragment frag
 
@@ -95,6 +97,7 @@ Shader "Custom/UnityBRDF"
 			ENDCG
 		}
 
+		// Deferred pass
 		Pass {
 			Tags {
 				"LightMode" = "Deferred"
@@ -103,6 +106,11 @@ Shader "Custom/UnityBRDF"
 
 			#pragma target 3.0
 			#pragma exclude_renderers nomrt
+
+			#define DEFERRED_PASS
+			#pragma multi_compile _ UNITY_HDR_ON
+			#pragma multi_compile _ LIGHTMAP_ON
+			#pragma multi_compile_prepassfinal
 
 			#pragma shader_feature _ _RENDERING_CUTOUT
 			#pragma shader_feature _METALLIC_MAP
@@ -114,19 +122,15 @@ Shader "Custom/UnityBRDF"
 			#pragma shader_feature _DETAIL_ALBEDO_MAP
 			#pragma shader_feature _DETAIL_NORMAL_MAP
 
-			#pragma multi_compile _ UNITY_HDR_ON
-
-			#define DEFERRED_PASS
-
 			#pragma vertex vert
 			#pragma fragment frag
-
 
 			#include "UnityBRDFLighting.cginc"
 
 			ENDCG
 		}
 
+		// Shadow rendering pass
 		Pass {
 			Tags {
 				"LightMode" = "ShadowCaster"
@@ -144,6 +148,30 @@ Shader "Custom/UnityBRDF"
 			#pragma fragment ShadowFragmentProgram
 
 			#include "UnityBRDFShadow.cginc"
+
+			ENDCG
+		}
+
+		// used for lightmapping
+		Pass {
+			Tags {
+				"LightMode" = "Meta"
+			}
+
+			Cull Off
+
+			CGPROGRAM
+
+			#pragma shader_feature _METALLIC_MAP
+			#pragma shader_feature _ _SMOOTHNESS_ALBEDO _SMOOTHNESS_METALLIC
+			#pragma shader_feature _EMISSION_MAP
+			#pragma shader_feature _DETAIL_MASK
+			#pragma shader_feature _DETAIL_ALBEDO_MAP
+
+			#pragma vertex LightmappingVertexProgram
+			#pragma fragment LightmappingFragmentProgram
+
+			#include "UnityBRDFLightmapping.cginc"
 
 			ENDCG
 		}
