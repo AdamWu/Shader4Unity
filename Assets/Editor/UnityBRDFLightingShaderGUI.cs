@@ -188,12 +188,13 @@ public class UnityBRDFLightingShaderGUI : ShaderGUI
             MakeLabel(emission, "Emission (RGB)"), emission, FindProperty("_Emission"),
             emissionConfig, false
         );
+        editor.LightmapEmissionProperty(2);
         if (EditorGUI.EndChangeCheck())
         {
             SetKeyword("_EMISSION_MAP", emission.textureValue);
             foreach (Material m in editor.targets)
             {
-                m.globalIlluminationFlags = MaterialGlobalIlluminationFlags.BakedEmissive;
+                m.globalIlluminationFlags &= ~MaterialGlobalIlluminationFlags.EmissiveIsBlack;
             }
         }
 
