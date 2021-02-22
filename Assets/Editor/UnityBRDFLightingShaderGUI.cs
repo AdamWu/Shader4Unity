@@ -64,6 +64,13 @@ public class UnityBRDFLightingShaderGUI : ShaderGUI
         return FindProperty(name, properties);
     }
 
+    static GUIContent MakeLabel(string displayName, string tooltip = null)
+    {
+        staticLabel.text = displayName;
+        staticLabel.tooltip = tooltip;
+        return staticLabel;
+    }
+
     static GUIContent MakeLabel(MaterialProperty property, string tooltip = null)
     {
         staticLabel.text = property.displayName;
@@ -124,6 +131,19 @@ public class UnityBRDFLightingShaderGUI : ShaderGUI
                 m.SetInt("_DstBlend", (int)settings.dstBlend);
                 m.SetInt("_ZWrite", settings.zWrite ? 1 : 0);
             }
+        }
+
+
+        // wireframe render
+        if (target.HasProperty("_WireframeColor"))
+        {
+            GUILayout.Label("Wireframe", EditorStyles.boldLabel);
+            EditorGUI.indentLevel += 2;
+            editor.ShaderProperty(FindProperty("_WireframeColor"),MakeLabel("Color"));
+            editor.ShaderProperty(FindProperty("_WireframeSmoothing"), MakeLabel("Smoothing", "In screen space."));
+            editor.ShaderProperty(FindProperty("_WireframeThickness"),MakeLabel("Thickness", "In screen space.")
+            );
+            EditorGUI.indentLevel -= 2;
         }
 
         // Main Maps
