@@ -1,5 +1,3 @@
-// Upgrade NOTE: replaced 'UNITY_PASS_TEXCUBE(unity_SpecCube1)' with 'UNITY_PASS_TEXCUBE_SAMPLER(unity_SpecCube1,unity_SpecCube0)'
-
 #if !defined(UNITY_BRDF_LIGHTING_INCLUDED)
 #define UNITY_BRDF_LIGHTING_INCLUDED
 
@@ -21,6 +19,7 @@
 
 struct a2v
 {
+	UNITY_VERTEX_INPUT_INSTANCE_ID
 	float4 vertex : POSITION;
 	float2 uv : TEXCOORD0;
 	float2 uv1 : TEXCOORD1;
@@ -31,6 +30,7 @@ struct a2v
 
 struct v2f
 {
+	UNITY_VERTEX_INPUT_INSTANCE_ID
 	float4 pos : SV_POSITION;
 	float4 uv : TEXCOORD0;
 	float3 normal : TEXCOORD1;
@@ -60,7 +60,11 @@ struct v2f
 #endif
 };
 
-float4 _Color;
+UNITY_INSTANCING_BUFFER_START(InstanceProperties)
+	//float4 _Color;
+	UNITY_DEFINE_INSTANCED_PROP(float4, _Color)
+UNITY_INSTANCING_BUFFER_END(InstanceProperties)
+
 float _Cutoff;
 sampler2D _MainTex, _DetailTex, _DetailMask;
 float4 _MainTex_ST, _DetailTex_ST;
@@ -83,6 +87,9 @@ v2f vert(a2v v)
 {
 	v2f o;
 	UNITY_INITIALIZE_OUTPUT(v2f, o);
+	UNITY_SETUP_INSTANCE_ID(v);
+	UNITY_TRANSFER_INSTANCE_ID(v, o);
+
 	o.pos = UnityObjectToClipPos(v.vertex);
 	o.uv.xy = TRANSFORM_TEX(v.uv, _MainTex);
 	o.uv.zw = TRANSFORM_TEX(v.uv, _DetailTex);
@@ -165,7 +172,7 @@ float GetDetailMask(v2f i) {
 #endif
 }
 float3 GetAlbedo(v2f i) {
-	float3 albedo = tex2D(_MainTex, i.uv.xy).rgb * _Color.rgb;
+	float3 albedo = tex2D(_MainTex, i.uv.xy).rgb * UNITY_ACCESS_INSTANCED_PROP(InstanceProperties, _Color).rgb;
 #if defined (_DETAIL_ALBEDO_MAP)
 	float3 details = tex2D(_DetailTex, i.uv.zw) * unity_ColorSpaceDouble;
 	albedo = lerp(albedo, albedo * details, GetDetailMask(i));
@@ -173,7 +180,7 @@ float3 GetAlbedo(v2f i) {
 	return albedo;
 }
 float GetAlpha(v2f i) {
-	float alpha = _Color.a;
+	float alpha = UNITY_ACCESS_INSTANCED_PROP(InstanceProperties, _Color).a;
 #if !defined(_SMOOTHNESS_ALBEDO)
 	alpha *= tex2D(_MainTex, i.uv.xy).a;
 #endif
@@ -391,6 +398,8 @@ struct FragmentOutput {
 
 FragmentOutput frag(v2f i)
 {
+	UNITY_SETUP_INSTANCE_ID(i);
+
 	float alpha = GetAlpha(i);
 #if defined(_RENDERING_CUTOUT)
 	clip(alpha - _Cutoff);

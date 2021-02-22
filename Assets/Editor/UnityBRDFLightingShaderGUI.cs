@@ -247,5 +247,9 @@ public class UnityBRDFLightingShaderGUI : ShaderGUI
         }
 
         editor.TextureScaleOffsetProperty(detailTex);
+
+        // Advanced
+        GUILayout.Label("Advanced Options", EditorStyles.boldLabel);
+        editor.EnableInstancingField();
     }
 }

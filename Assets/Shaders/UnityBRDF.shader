@@ -59,6 +59,7 @@ Shader "Custom/UnityBRDF"
 			//#pragma multi_compile _ SHADOWS_SCREEN	// only for directional light
 			#pragma multi_compile_fwdbase // SHADOWS_SCREEN LIGHTMAP_ON DIRLIGHTMAP_COMBINED ...
 			#pragma multi_compile_fog
+			#pragma multi_compile_instancing
 
 			#define FORWARD_BASE_PASS
 
@@ -118,6 +119,7 @@ Shader "Custom/UnityBRDF"
 			#pragma multi_compile _ UNITY_HDR_ON
 			#pragma multi_compile _ LIGHTMAP_ON
 			#pragma multi_compile_prepassfinal
+			#pragma multi_compile_instancing
 
 			#pragma shader_feature _ _RENDERING_CUTOUT
 			#pragma shader_feature _METALLIC_MAP
@@ -146,10 +148,11 @@ Shader "Custom/UnityBRDF"
 			CGPROGRAM
 			#pragma target 3.0
 
-			#pragma multi_compile_shadowcaster
-
 			#pragma shader_feature _ _RENDERING_CUTOUT _RENDERING_FADE _RENDERING_TRANSPARENT
 			#pragma shader_feature _SMOOTHNESS_ALBEDO
+
+			#pragma multi_compile_shadowcaster
+			#pragma multi_compile_instancing
 
 			#pragma vertex ShadowVertexProgram
 			#pragma fragment ShadowFragmentProgram
