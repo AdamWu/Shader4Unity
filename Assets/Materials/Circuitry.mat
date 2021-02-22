@@ -9,7 +9,7 @@ Material:
   m_PrefabAsset: {fileID: 0}
   m_Name: Circuitry
   m_Shader: {fileID: 4800000, guid: 2ceb2619f4ee75e4ca7985e8660c67ac, type: 3}
-  m_ShaderKeywords: _METALLICGLOSSMAP _METALLIC_MAP _NORMALMAP
+  m_ShaderKeywords: _METALLICGLOSSMAP _METALLIC_MAP _NORMALMAP _NORMAL_MAP
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0

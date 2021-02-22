@@ -279,7 +279,20 @@ UnityIndirect CreateIndirectLight(v2f i, float3 viewDir) {
 
 	// SH light
 	#if !defined(LIGHTMAP_ON) && !defined(DYNAMICLIGHTMAP_ON)
-		indirectLight.diffuse += max(0, ShadeSH9(float4(i.normal, 1)));
+		#if UNITY_LIGHT_PROBE_PROXY_VOLUME
+			if (unity_ProbeVolumeParams.x == 1) {
+				indirectLight.diffuse = SHEvalLinearL0L1_SampleProbeVolume(float4(i.normal, 1), i.worldPos);
+				indirectLight.diffuse = max(0, indirectLight.diffuse);
+				#if defined(UNITY_COLORSPACE_GAMMA)
+					indirectLight.diffuse = LinearToGammaSpace(indirectLight.diffuse);
+				#endif
+			}
+			else {
+				indirectLight.diffuse += max(0, ShadeSH9(float4(i.normal, 1)));
+			}
+		#else
+			indirectLight.diffuse += max(0, ShadeSH9(float4(i.normal, 1)));
+		#endif
 	#endif
 
 	// reflection probes
