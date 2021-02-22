@@ -10,7 +10,7 @@ Material:
   m_Name: UnityPBR
   m_Shader: {fileID: 4800000, guid: 2ceb2619f4ee75e4ca7985e8660c67ac, type: 3}
   m_ShaderKeywords: 
-  m_LightmapFlags: 4
+  m_LightmapFlags: 6
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
@@ -76,9 +76,9 @@ Material:
     - _DiffuseFactor: 0.3
     - _DstBlend: 0
     - _GlossMapScale: 1
-    - _Glossiness: 0.598
+    - _Glossiness: 1
     - _GlossyReflections: 1
-    - _Metallic: 0
+    - _Metallic: 0.5
     - _Mode: 0
     - _OcclusionStrength: 1
     - _Parallax: 0.02

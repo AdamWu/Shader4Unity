@@ -70,7 +70,7 @@ Material:
     m_Floats:
     - _AlphaCutoff: 0.5
     - _BumpScale: 1
-    - _Cutoff: 0.428
+    - _Cutoff: 0.484
     - _DetailBumpScale: 1
     - _DetailNormalMapScale: 1
     - _DiffuseFactor: 0.3
@@ -78,10 +78,11 @@ Material:
     - _GlossMapScale: 1
     - _Glossiness: 1
     - _GlossyReflections: 1
-    - _Metallic: 0.5
+    - _Metallic: 0
     - _Mode: 0
     - _OcclusionStrength: 1
     - _Parallax: 0.02
+    - _Shininess: 0.7
     - _Smoothness: 1
     - _SmoothnessTextureChannel: 0
     - _SpecularFactor: 1
@@ -93,4 +94,5 @@ Material:
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _Emission: {r: 0, g: 0, b: 0, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
+    - _SpecColor: {r: 1, g: 1, b: 1, a: 1}
     - _Tint: {r: 1, g: 1, b: 1, a: 1}

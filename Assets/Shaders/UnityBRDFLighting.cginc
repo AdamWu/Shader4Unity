@@ -7,7 +7,10 @@
 #include "AutoLight.cginc"
 
 #if defined(FOG_LINEAR) || defined(FOG_EXP) || defined(FOG_EXP2)
-	#define FOG_DEPTH 1
+	#if !defined(FOG_DISTANCE)
+		#define FOG_DEPTH 1
+	#endif
+	#define FOG_ON 1
 #endif
 
 #if defined(LIGHTMAP_ON) && defined(SHADOWS_SCREEN)
@@ -21,6 +24,7 @@ struct a2v
 	float4 vertex : POSITION;
 	float2 uv : TEXCOORD0;
 	float2 uv1 : TEXCOORD1;
+	float2 uv2 : TEXCOORD2;
 	float3 normal : NORMAL;
 	float4 tangent : TANGENT;
 };
@@ -30,18 +34,29 @@ struct v2f
 	float4 pos : SV_POSITION;
 	float4 uv : TEXCOORD0;
 	float3 normal : TEXCOORD1;
+
+#if defined(BINORMAL_PER_FRAGMENT)
 	float4 tangent : TEXCOORD2;
-#if FOG_DEPTH
-	float4 worldPos : TEXCOORD3;
 #else
-	float3 worldPos : TEXCOORD3;
+	float3 tangent : TEXCOORD2;
+	float3 binormal : TEXCOORD3;
 #endif
-	UNITY_SHADOW_COORDS(4)
+
+#if FOG_DEPTH
+	float4 worldPos : TEXCOORD4;
+#else
+	float3 worldPos : TEXCOORD4;
+#endif
+
+	UNITY_SHADOW_COORDS(5)
 #if defined(VERTEXLIGHT_ON)
-	float3 vertexLightColor : TEXCOORD5;
+	float3 vertexLightColor : TEXCOORD6;
 #endif
 #if defined(LIGHTMAP_ON)
-	float2 lightmapUV : TEXCOORD5;
+	float2 lightmapUV : TEXCOORD6;
+#endif
+#if defined(DYNAMICLIGHTMAP_ON)
+	float2 dynamicLightmapUV : TEXCOORD7;
 #endif
 };
 
@@ -59,9 +74,15 @@ float3 _Emission;
 sampler2D _OcclusionMap;
 float _OcclusionStrength;
 
+float3 CreateBinormal(float3 normal, float3 tangent, float binormalSign)
+{
+	return cross(normal, tangent.xyz) * (binormalSign * unity_WorldTransformParams.w);
+}
+
 v2f vert(a2v v)
 {
 	v2f o;
+	UNITY_INITIALIZE_OUTPUT(v2f, o);
 	o.pos = UnityObjectToClipPos(v.vertex);
 	o.uv.xy = TRANSFORM_TEX(v.uv, _MainTex);
 	o.uv.zw = TRANSFORM_TEX(v.uv, _DetailTex);
@@ -70,7 +91,12 @@ v2f vert(a2v v)
 	o.worldPos.w = o.pos.z;
 #endif
 	o.normal = UnityObjectToWorldNormal(v.normal);
+#if defined(BINORMAL_PER_FRAGMENT)
 	o.tangent = float4(UnityObjectToWorldDir(v.tangent.xyz), v.tangent.w);
+#else
+	o.tangent = UnityObjectToWorldDir(v.tangent.xyz);
+	o.binormal = CreateBinormal(o.normal, o.tangent.xyz, o.tangent.w);
+#endif
 
 	UNITY_TRANSFER_SHADOW(o, v.uv1);
 
@@ -85,6 +111,9 @@ v2f vert(a2v v)
 
 #if defined(LIGHTMAP_ON)
 	o.lightmapUV = v.uv1 * unity_LightmapST.xy + unity_LightmapST.zw;
+#endif
+#if defined(DYNAMICLIGHTMAP_ON)
+	o.dynamicLightmapUV = v.uv2 * unity_DynamicLightmapST.xy + unity_DynamicLightmapST.zw;
 #endif
 	return o;
 }
@@ -181,11 +210,10 @@ UnityLight CreateLight(v2f i)
 {
 	UnityLight light;
 
-#if defined(DEFERRED_PASS) || defined(SUBTRACTIVE_LIGHTING)
+#if defined(DEFERRED_PASS) || SUBTRACTIVE_LIGHTING
 	light.dir = float3(0, 1, 0);
 	light.color = 0;
 #else
-
 	#if defined(POINT) || defined(SPOT) || defined(POINT_COOKIE)
 		light.dir = normalize(_WorldSpaceLightPos0.xyz - i.worldPos.xyz);
 	#else
@@ -201,18 +229,20 @@ UnityLight CreateLight(v2f i)
 	*/
 	UNITY_LIGHT_ATTENUATION(attenuation, i, i.worldPos.xyz);
 	attenuation = FadeShadows(i, attenuation);
-	//attenuation *= GetOcclusion(i);// direct light donnot need occlusion
 	light.color = _LightColor0.rgb * attenuation;
 #endif
-	//light.ndotl = DotClamped(i.normal, light.dir);
 	return light;
 }
 
-float3 BoxProjection(float3 direction, float3 position, float3 cubemapPosition, float3 boxMin, float3 boxMax)
+float3 BoxProjection(float3 direction, float3 position, float4 cubemapPosition, float3 boxMin, float3 boxMax)
 {
-	float3 factors = ((direction > 0 ? boxMax : boxMin) - position) / direction;
-	float scalar = min(min(factors.x, factors.y), factors.z);
-	return direction * scalar + (position - cubemapPosition);
+	UNITY_BRANCH
+	if (cubemapPosition.w > 0) {
+		float3 factors = ((direction > 0 ? boxMax : boxMin) - position) / direction;
+		float scalar = min(min(factors.x, factors.y), factors.z);
+		direction = direction * scalar + (position - cubemapPosition);
+	}
+	return direction;
 }
 
 UnityIndirect CreateIndirectLight(v2f i, float3 viewDir) {
@@ -224,8 +254,10 @@ UnityIndirect CreateIndirectLight(v2f i, float3 viewDir) {
 #if defined(VERTEXLIGHT_ON)
 	indirectLight.diffuse = i.vertexLightColor;
 #endif
-	// other SH light
+
+	// other light info
 #if defined(FORWARD_BASE_PASS) || defined(DEFERRED_PASS)
+	// baked lightmap
 	#if defined(LIGHTMAP_ON)
 		indirectLight.diffuse = DecodeLightmap(UNITY_SAMPLE_TEX2D(unity_Lightmap, i.lightmapUV));
 		#if defined(DIRLIGHTMAP_COMBINED)
@@ -233,7 +265,20 @@ UnityIndirect CreateIndirectLight(v2f i, float3 viewDir) {
 			indirectLight.diffuse = DecodeDirectionalLightmap(indirectLight.diffuse, lightmapDirection, i.normal);
 		#endif
 		ApplySubtractiveLighting(i, indirectLight);
-	#else
+	#endif
+	// dynamic lightmap
+	#if defined(DYNAMICLIGHTMAP_ON)
+		float3 dynamicLightDiffuse = DecodeRealtimeLightmap(UNITY_SAMPLE_TEX2D(unity_DynamicLightmap, i.dynamicLightmapUV));
+		#if defined(DIRLIGHTMAP_COMBINED)
+			float4 dynamicLightmapDirection = UNITY_SAMPLE_TEX2D_SAMPLER(unity_DynamicDirectionality, unity_DynamicLightmap,i.dynamicLightmapUV);
+			indirectLight.diffuse += DecodeDirectionalLightmap(dynamicLightDiffuse, dynamicLightmapDirection, i.normal);
+		#else
+			indirectLight.diffuse += dynamicLightDiffuse;
+		#endif
+	#endif
+
+	// SH light
+	#if !defined(LIGHTMAP_ON) && !defined(DYNAMICLIGHTMAP_ON)
 		indirectLight.diffuse += max(0, ShadeSH9(float4(i.normal, 1)));
 	#endif
 
@@ -252,8 +297,20 @@ UnityIndirect CreateIndirectLight(v2f i, float3 viewDir) {
 		unity_SpecCube1_ProbePosition,
 		unity_SpecCube1_BoxMin, unity_SpecCube1_BoxMax
 	);
-	float3 probe1 = Unity_GlossyEnvironment(UNITY_PASS_TEXCUBE_SAMPLER(unity_SpecCube1,unity_SpecCube0), unity_SpecCube1_HDR, envData);
-	indirectLight.specular = lerp(probe1, probe0, unity_SpecCube0_BoxMin.w);
+
+	// if suppored spec cube blending
+	#if UNITY_SPECCUBE_BLENDING
+		float interpolater = unity_SpecCube0_BoxMin.w;
+		UNITY_BRANCH
+		if (interpolater < 0.99999) {
+			float3 probe1 = Unity_GlossyEnvironment(UNITY_PASS_TEXCUBE_SAMPLER(unity_SpecCube1, unity_SpecCube0), unity_SpecCube1_HDR, envData);
+			indirectLight.specular = lerp(probe1, probe0, interpolater);
+		} else {
+			indirectLight.specular = probe0;
+		}
+	#else
+		indirectLight.specular = probe0;
+	#endif
 
 	// occlusion
 	float occlusion = GetOcclusion(i);
@@ -263,7 +320,7 @@ UnityIndirect CreateIndirectLight(v2f i, float3 viewDir) {
 	return indirectLight;
 }
 
-void CalculateFragmentNormal(inout v2f i)
+void InitializeFragmentNormal(inout v2f i)
 {
 	float3 tangentSpaceNormal = float3(0, 0, 1);
 #if defined(_NORMAL_MAP)
@@ -275,33 +332,33 @@ void CalculateFragmentNormal(inout v2f i)
 	tangentSpaceNormal = BlendNormals(tangentSpaceNormal, detailNormal);
 #endif
 
-	float3 binormal = cross(i.normal, i.tangent.xyz) * (i.tangent.w * unity_WorldTransformParams.w);
-	
+#if defined(BINORMAL_PER_FRAGMENT)
+	float3 binormal = CreateBinormal(i.normal, i.tangent.xyz, i.tangent.w);
+#else
+	float3 binormal = i.binormal;
+#endif
+		
 	i.normal = normalize(
 		tangentSpaceNormal.x * i.tangent +
 		tangentSpaceNormal.y * binormal +
 		tangentSpaceNormal.z * i.normal
 	);
-	i.normal = normalize(i.normal);
 }
 
 float4 ApplyFog(float4 color, v2f i) {
+#if FOG_ON
 	float viewDistance = length(_WorldSpaceCameraPos - i.worldPos.xyz);
-#if FOG_DEPTH
-	viewDistance = UNITY_Z_0_FAR_FROM_CLIPSPACE(i.worldPos.w);
-#endif
+	#if FOG_DEPTH
+		viewDistance = UNITY_Z_0_FAR_FROM_CLIPSPACE(i.worldPos.w);
+	#endif
 	UNITY_CALC_FOG_FACTOR_RAW(viewDistance);
 	unityFogFactor = saturate(unityFogFactor);
-	// fog disabled
-#if !defined(FOG_LINEAR) && !defined(FOG_EXP) && !defined(FOG_EXP2)
-	unityFogFactor = 1;
-#endif
-
 	float3 fogColor = 0;
-#if defined(FORWARD_BASE_PASS)
-	fogColor = unity_FogColor.rgb;
-#endif
+	#if defined(FORWARD_BASE_PASS)
+		fogColor = unity_FogColor.rgb;
+	#endif
 	color.rgb = lerp(fogColor, color.rgb, unityFogFactor);
+#endif
 	return color;
 }
 
@@ -326,7 +383,7 @@ FragmentOutput frag(v2f i)
 	clip(alpha - _Cutoff);
 #endif
 
-	CalculateFragmentNormal(i);
+	InitializeFragmentNormal(i);
 
 	float3 viewDir = normalize(_WorldSpaceCameraPos - i.worldPos.xyz);
 	//float3 viewDir = normalize(UnityWorldSpaceViewDir(i.worldPos.xyz));
@@ -340,10 +397,13 @@ FragmentOutput frag(v2f i)
 	alpha = 1 - oneMinusReflectivity + alpha * oneMinusReflectivity;
 #endif
 
-	float4 color = UNITY_BRDF_PBS(albedo,specColor,
+	float4 color = UNITY_BRDF_PBS(
+		albedo, specColor,
 		oneMinusReflectivity, GetSmoothness(i),
 		i.normal, viewDir, 
-		CreateLight(i), CreateIndirectLight(i, viewDir));
+		CreateLight(i), 
+		CreateIndirectLight(i, viewDir)
+	);
 
 	color.rgb += GetEmission(i);
 #if defined(_RENDERING_FADE) || defined(_RENDERING_TRANSPARENT)

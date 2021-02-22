@@ -20,11 +20,18 @@ Shader "Custom/UnityBRDF"
 		_DetailNormalMap("Detail Normal Map", 2D) = "bump" {}
 		_DetailBumpScale("Detail Bump Scale", Float) = 1
 
-
 		[HideInInspector] _SrcBlend("_SrcBlend", Float) = 1
 		[HideInInspector] _DstBlend("_DstBlend", Float) = 0
 		[HideInInspector] _ZWrite("_ZWrite", Float) = 1
 	}
+
+	CGINCLUDE
+
+	#define BINORMAL_PER_FRAGMENT
+	#define FOG_DISTANCE
+	
+	ENDCG
+
 	SubShader
 	{
 		//  Base forward pass (directional light, emission, lightmaps, ...)
@@ -38,12 +45,6 @@ Shader "Custom/UnityBRDF"
 			CGPROGRAM
 			#pragma target 3.0
 
-			#define FORWARD_BASE_PASS
-			#pragma multi_compile _ VERTEXLIGHT_ON	// for vertex light
-			#pragma multi_compile _ SHADOWS_SCREEN	// only for directional light
-			#pragma multi_compile_fwdbase // SHADOWS_SCREEN LIGHTMAP_ON DIRLIGHTMAP_COMBINED ...
-			#pragma multi_compile_fog
-
 			#pragma shader_feature _ _RENDERING_CUTOUT _RENDERING_FADE _RENDERING_TRANSPARENT
 			#pragma shader_feature _METALLIC_MAP
 			#pragma shader_feature _ _SMOOTHNESS_ALBEDO _SMOOTHNESS_METALLIC
@@ -54,12 +55,18 @@ Shader "Custom/UnityBRDF"
 			#pragma shader_feature _DETAIL_ALBEDO_MAP
 			#pragma shader_feature _DETAIL_NORMAL_MAP
 
+			#pragma multi_compile _ VERTEXLIGHT_ON	// for vertex light
+			//#pragma multi_compile _ SHADOWS_SCREEN	// only for directional light
+			#pragma multi_compile_fwdbase // SHADOWS_SCREEN LIGHTMAP_ON DIRLIGHTMAP_COMBINED ...
+			#pragma multi_compile_fog
+
+			#define FORWARD_BASE_PASS
 
 			#pragma vertex vert
 			#pragma fragment frag
 
 			#include "UnityBRDFLighting.cginc"
-
+			
 			ENDCG
 		}
 		
@@ -73,13 +80,8 @@ Shader "Custom/UnityBRDF"
 
 			CGPROGRAM
 			#pragma target 3.0
-			 
-			// different light variant
-			#pragma multi_compile DIRECTIONAL POINT SPOT
-			#pragma multi_compile_fwdadd_fullshadows
-			#pragma multi_compile_fog
-
-			//#pragma shader_feature _ _RENDERING_CUTOUT _RENDERING_FADE _RENDERING_TRANSPARENT
+			
+			#pragma shader_feature _ _RENDERING_CUTOUT _RENDERING_FADE _RENDERING_TRANSPARENT
 			#pragma shader_feature _METALLIC_MAP
 			#pragma shader_feature _ _SMOOTHNESS_ALBEDO _SMOOTHNESS_METALLIC
 			#pragma shader_feature _NORMAL_MAP
@@ -88,6 +90,11 @@ Shader "Custom/UnityBRDF"
 			#pragma shader_feature _DETAIL_MASK
 			#pragma shader_feature _DETAIL_ALBEDO_MAP
 			#pragma shader_feature _DETAIL_NORMAL_MAP
+
+			// different light variant
+			//#pragma multi_compile DIRECTIONAL POINT SPOT
+			#pragma multi_compile_fwdadd_fullshadows
+			#pragma multi_compile_fog
 
 			#pragma vertex vert
 			#pragma fragment frag
