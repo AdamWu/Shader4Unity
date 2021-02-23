@@ -1,27 +1,30 @@
 using UnityEngine;
 
-[ExecuteInEditMode]
+[ExecuteInEditMode, ImageEffectAllowedInSceneView]
 public class BloomEffect : MonoBehaviour
 {
+    // pass
+    const int BoxDownPrefilterPass = 0;
+    const int BoxDownPass = 1;
+    const int BoxUpPass = 2;
+    const int ApplyBloomPass = 3;
+    const int DebugBloomPass = 4;
+
+    public Shader bloomShader;
+    [Range(0, 10)]
+    public float intensity = 1;
     [Range(1, 16)]
     public int iterations = 4;
     [Range(0, 10)]
     public float threshold = 1;
     [Range(0, 1)]
     public float softThreshold = 0.5f;
-    [Range(0, 10)]
-    public float intensity = 1;
+    public bool debug;
 
-    public Shader bloomShader;
     Material bloomMaterial = null;
 
     RenderTexture[] textures = new RenderTexture[16];
 
-    // pass
-    const int BoxDownPrefilterPass = 0;
-    const int BoxDownPass = 1;
-    const int BoxUpPass = 2;
-    const int ApplyBloomPass = 3;
 
     void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
@@ -69,8 +72,15 @@ public class BloomEffect : MonoBehaviour
             curSource = curDestination;
         }
 
-        bloomMaterial.SetTexture("_SourceTex", source);
-        Graphics.Blit(curSource, destination, bloomMaterial, ApplyBloomPass);
+        if(debug)
+        {
+            Graphics.Blit(curSource, destination, bloomMaterial, ApplyBloomPass);
+        }
+        else
+        {
+            bloomMaterial.SetTexture("_SourceTex", source);
+            Graphics.Blit(curSource, destination, bloomMaterial, ApplyBloomPass);
+        }
         RenderTexture.ReleaseTemporary(curSource);
     }
 

@@ -100,5 +100,15 @@ Shader "Custom/Bloom" {
 			}
 			ENDCG
 		}
+		Pass { // 4 - debug
+			CGPROGRAM
+			#pragma vertex VertexProgram
+			#pragma fragment FragmentProgram
+
+			half4 FragmentProgram(Interpolators i) : SV_Target {
+				return _Intensity * half4(SampleBox(i.uv, 0.5), 1);
+			}
+			ENDCG
+		}
 	}
 }
