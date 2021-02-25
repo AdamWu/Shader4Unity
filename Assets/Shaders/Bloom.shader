@@ -1,4 +1,4 @@
-Shader "Custom/Bloom" {
+Shader "Hidden/Bloom" {
 	Properties{
 		_MainTex("Texture", 2D) = "white" {}
 	}

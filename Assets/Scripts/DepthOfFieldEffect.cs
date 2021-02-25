@@ -12,17 +12,13 @@ public class DepthOfFieldEffect : MonoBehaviour {
 
     [Range(0.1f, 100f)]
 	public float focusDistance = 10f;
-
 	[Range(0.1f, 10f)]
 	public float focusRange = 3f;
-
     [Range(1f, 10f)]
     public float bokehRadius = 4f;
 
     [HideInInspector]
 	public Shader dofShader;
-
-	[NonSerialized]
 	Material dofMaterial;
 
 	void OnRenderImage (RenderTexture source, RenderTexture destination) {

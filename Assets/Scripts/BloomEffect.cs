@@ -10,7 +10,6 @@ public class BloomEffect : MonoBehaviour
     const int ApplyBloomPass = 3;
     const int DebugBloomPass = 4;
 
-    public Shader bloomShader;
     [Range(0, 10)]
     public float intensity = 1;
     [Range(1, 16)]
@@ -21,7 +20,9 @@ public class BloomEffect : MonoBehaviour
     public float softThreshold = 0.5f;
     public bool debug;
 
-    Material bloomMaterial = null;
+    [HideInInspector]
+    public Shader bloomShader;
+    Material bloomMaterial;
 
     RenderTexture[] textures = new RenderTexture[16];
 
