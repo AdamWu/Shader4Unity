@@ -927,6 +927,7 @@ GameObject:
   - component: {fileID: 1608697291}
   - component: {fileID: 1608697290}
   - component: {fileID: 1608697292}
+  - component: {fileID: 1608697293}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -973,7 +974,7 @@ Camera:
   m_CullingMask:
     serializedVersion: 2
     m_Bits: 4294967295
-  m_RenderingPath: -1
+  m_RenderingPath: 1
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
   m_TargetEye: 3
@@ -1021,7 +1022,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1608697286}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1ec829f46d037b244891af573907bc16, type: 3}
   m_Name: 
@@ -1039,16 +1040,32 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1608697286}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 88dac10089256a5418a0bc255db41fe7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   luminanceSource: 2
-  contrastThreshold: 0.0544
-  relativeThreshold: 0.251
-  subpixelBlending: 0.361
+  contrastThreshold: 0.0406
+  relativeThreshold: 0.096
+  subpixelBlending: 1
   fxaaShader: {fileID: 4800000, guid: e7bd4a832df7efc4eb4efc07ac870ea4, type: 3}
+--- !u!114 &1608697293
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1608697286}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bd1d255ffbbb43446a094d54dd2f1dbc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  pos: {x: 0.081041954, y: 1.1843544}
+  radius: 0.2
+  blurStrength: 0.4
+  maskShader: {fileID: 4800000, guid: f4b19ac7731b79e41a18d8f9a6fabe75, type: 3}
 --- !u!1 &1859588268
 GameObject:
   m_ObjectHideFlags: 0
