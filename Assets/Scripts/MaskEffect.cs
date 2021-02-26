@@ -7,7 +7,7 @@ public class MaskEffect : MonoBehaviour
 {
     public Vector2 pos = Vector2.one/2;
     [Range(0.1f, 1f)]
-    public float radius = 0.2f;
+    public float radius = 0.5f;
     [Range(0.01f, 1f)]
     public float blurStrength = 0.2f;
 

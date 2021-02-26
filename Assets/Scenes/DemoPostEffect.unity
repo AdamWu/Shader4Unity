@@ -979,7 +979,7 @@ Camera:
   m_TargetDisplay: 0
   m_TargetEye: 3
   m_HDR: 1
-  m_AllowMSAA: 1
+  m_AllowMSAA: 0
   m_AllowDynamicResolution: 0
   m_ForceIntoRT: 0
   m_OcclusionCulling: 1
@@ -1022,7 +1022,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1608697286}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1ec829f46d037b244891af573907bc16, type: 3}
   m_Name: 
@@ -1046,9 +1046,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   luminanceSource: 2
-  contrastThreshold: 0.0406
-  relativeThreshold: 0.096
+  contrastThreshold: 0.0369
+  relativeThreshold: 0.077
   subpixelBlending: 1
+  lowQuality: 0
+  gammaBlending: 0
   fxaaShader: {fileID: 4800000, guid: e7bd4a832df7efc4eb4efc07ac870ea4, type: 3}
 --- !u!114 &1608697293
 MonoBehaviour:
@@ -1057,13 +1059,13 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1608697286}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: bd1d255ffbbb43446a094d54dd2f1dbc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  pos: {x: 0.081041954, y: 1.1843544}
-  radius: 0.2
+  pos: {x: 0.09985527, y: 1.1817816}
+  radius: 0.5
   blurStrength: 0.4
   maskShader: {fileID: 4800000, guid: f4b19ac7731b79e41a18d8f9a6fabe75, type: 3}
 --- !u!1 &1859588268

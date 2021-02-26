@@ -87,10 +87,12 @@ Shader "Hidden/FXAA" {
 		struct EdgeData {
 			bool isHorizontal;
 			float pixelStep;
+			float oppositeLuminance, gradient;
 		};
 
 		EdgeData DetermineEdge(LuminanceData l) {
 			EdgeData e;
+			// 水平和垂直变化率
 			float horizontal =
 				abs(l.n + l.s - 2 * l.m) * 2 +
 				abs(l.ne + l.se - 2 * l.e) +
@@ -99,15 +101,106 @@ Shader "Hidden/FXAA" {
 				abs(l.e + l.w - 2 * l.m) * 2 +
 				abs(l.ne + l.nw - 2 * l.n) +
 				abs(l.se + l.sw - 2 * l.s);
+			// 判断水平边缘
 			e.isHorizontal = horizontal >= vertical;
+			// 正向、负向渐变强度
 			float pLuminance = e.isHorizontal ? l.n : l.e;
 			float nLuminance = e.isHorizontal ? l.s : l.w;
 			float pGradient = abs(pLuminance - l.m);
 			float nGradient = abs(nLuminance - l.m);
 			e.pixelStep = e.isHorizontal ? _MainTex_TexelSize.y : _MainTex_TexelSize.x;
-			if (pGradient < nGradient) e.pixelStep = -e.pixelStep;
+			if (pGradient < nGradient) {
+				e.pixelStep = -e.pixelStep;
+				e.oppositeLuminance = nLuminance;
+				e.gradient = nGradient;
+			} else {
+				e.oppositeLuminance = pLuminance;
+				e.gradient = pGradient;
+			}
 			return e;
 		}
+
+		#if defined(LOW_QUALITY)
+			#define EDGE_STEP_COUNT 4
+			#define EDGE_STEPS 1, 1.5, 2, 4
+			#define EDGE_GUESS 12
+		#else
+			#define EDGE_STEP_COUNT 10
+			#define EDGE_STEPS 1, 1.5, 2, 2, 2, 2, 2, 2, 2, 4
+			#define EDGE_GUESS 8
+		#endif
+
+		static const float edgeSteps[EDGE_STEP_COUNT] = { EDGE_STEPS };
+
+		float DetermineEdgeBlendFactor(LuminanceData l, EdgeData e, float2 uv) {
+			float2 uvEdge = uv;
+			float2 edgeStep;
+			if (e.isHorizontal) {
+				uvEdge.y += e.pixelStep * 0.5;
+				edgeStep = float2(_MainTex_TexelSize.x, 0);
+			}
+			else {
+				uvEdge.x += e.pixelStep * 0.5;
+				edgeStep = float2(0, _MainTex_TexelSize.y);
+			}
+
+			float edgeLuminance = (l.m + e.oppositeLuminance) * 0.5;
+			float gradientThreshold = e.gradient * 0.25;
+
+			float2 puv = uvEdge + edgeStep * edgeSteps[0];
+			float pLuminanceDelta = SampleLuminance(puv) - edgeLuminance;
+			bool pAtEnd = abs(pLuminanceDelta) >= gradientThreshold;
+
+			UNITY_UNROLL
+			for (int i = 1; i < EDGE_STEP_COUNT && !pAtEnd; i++) {
+				puv += edgeStep * edgeSteps[i];
+				pLuminanceDelta = SampleLuminance(puv) - edgeLuminance;
+				pAtEnd = abs(pLuminanceDelta) >= gradientThreshold;
+			}
+			if (!pAtEnd) {
+				puv += edgeStep * EDGE_GUESS;
+			}
+
+			float2 nuv = uvEdge - edgeStep * edgeSteps[i];
+			float nLuminanceDelta = SampleLuminance(nuv) - edgeLuminance;
+			bool nAtEnd = abs(nLuminanceDelta) >= gradientThreshold;
+			
+			UNITY_UNROLL
+			for (int i = 1; i < EDGE_STEP_COUNT && !nAtEnd; i++) {
+				nuv -= edgeStep * edgeSteps[i];
+				nLuminanceDelta = SampleLuminance(nuv) - edgeLuminance;
+				nAtEnd = abs(nLuminanceDelta) >= gradientThreshold;
+			}
+			if (!pAtEnd) {
+				nuv -= edgeStep * EDGE_GUESS;
+			}
+
+			float pDistance, nDistance;
+			if (e.isHorizontal) {
+				pDistance = puv.x - uv.x;
+				nDistance = uv.x - nuv.x;
+			}
+			else {
+				pDistance = puv.y - uv.y;
+				nDistance = uv.y - nuv.y;
+			}
+			float shortestDistance;
+			bool deltaSign;
+			if (pDistance <= nDistance) {
+				shortestDistance = pDistance;
+				deltaSign = pLuminanceDelta > 0;
+			}
+			else {
+				shortestDistance = nDistance;
+				deltaSign = nLuminanceDelta > 0;
+			}
+			if (deltaSign == (l.m - shortestDistance >= 0)) {
+				return 0;
+			}
+
+			return 0.5 - shortestDistance / (pDistance + nDistance);
+		}
+
 
 		float4 ApplyFXAA(float2 uv) {
 			LuminanceData l = SampleLuminanceNeighborhood(uv);
@@ -116,12 +209,14 @@ Shader "Hidden/FXAA" {
 			}
 			float pixelBlend = DeterminePixelBlendFactor(l);
 			EdgeData e = DetermineEdge(l);
+			float edgeBlend = DetermineEdgeBlendFactor(l, e, uv);
+			float finalBlend = max(pixelBlend, edgeBlend);
 			
 			if (e.isHorizontal) {
-				uv.y += e.pixelStep * pixelBlend;
+				uv.y += e.pixelStep * finalBlend;
 			}
 			else {
-				uv.x += e.pixelStep * pixelBlend;
+				uv.x += e.pixelStep * finalBlend;
 			}
 			return float4(Sample(uv).rgb, l.m);
 		}
@@ -137,9 +232,15 @@ Shader "Hidden/FXAA" {
 			#pragma vertex VertexProgram
 			#pragma fragment FragmentProgram
 
+			#pragma multi_compile _ GAMMA_BLENDING
+
 			float4 FragmentProgram (Interpolators i) : SV_Target {
 				float4 sample = tex2D(_MainTex, i.uv);
-				sample.a = LinearRgbToLuminance(saturate(sample.rgb));
+				sample.rgb = saturate(sample.rgb);
+				sample.a = LinearRgbToLuminance(sample.rgb);
+				#if defined(GAMMA_BLENDING)
+					sample.rgb = LinearToGammaSpace(sample.rgb);
+				#endif
 				return sample;
 			}
 			ENDCG
@@ -150,9 +251,15 @@ Shader "Hidden/FXAA" {
 			#pragma fragment FragmentProgram
 
 			#pragma multi_compile _ LUMINANCE_GREEN
+			#pragma multi_compile _ LOW_QUALITY
+			#pragma multi_compile _ GAMMA_BLENDING
 
 			float4 FragmentProgram(Interpolators i) : SV_Target {
-				return ApplyFXAA(i.uv);
+				float4 sample = ApplyFXAA(i.uv);
+				#if defined(GAMMA_BLENDING)
+					sample.rgb = GammaToLinearSpace(sample.rgb);
+				#endif
+				return sample;
 			}
 			ENDCG
 		}

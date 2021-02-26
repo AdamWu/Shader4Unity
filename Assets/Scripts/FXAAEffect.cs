@@ -16,6 +16,8 @@ public class FXAAEffect : MonoBehaviour
     public float relativeThreshold = 0.063f;
     [Range(0f, 1f)]
     public float subpixelBlending = 1f;
+    public bool lowQuality;
+    public bool gammaBlending;
 
     [HideInInspector]
 	public Shader fxaaShader;
@@ -32,6 +34,19 @@ public class FXAAEffect : MonoBehaviour
         fxaaMaterial.SetFloat("_ContrastThreshold", contrastThreshold);
         fxaaMaterial.SetFloat("_RelativeThreshold", relativeThreshold);
         fxaaMaterial.SetFloat("_SubpixelBlending", subpixelBlending);
+        if (lowQuality) {
+            fxaaMaterial.EnableKeyword("LOW_QUALITY");
+        }
+        else {
+            fxaaMaterial.DisableKeyword("LOW_QUALITY");
+        }
+
+        if (gammaBlending) {
+            fxaaMaterial.EnableKeyword("GAMMA_BLENDING");
+        }
+        else {
+            fxaaMaterial.DisableKeyword("GAMMA_BLENDING");
+        }
 
         if (luminancePass == LuminanceMode.Calculate)
         {
