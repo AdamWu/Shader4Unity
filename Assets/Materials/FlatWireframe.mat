@@ -8,7 +8,7 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: FlatWireframe
-  m_Shader: {fileID: 4800000, guid: 2ceb2619f4ee75e4ca7985e8660c67ac, type: 3}
+  m_Shader: {fileID: 4800000, guid: cf17035f70f448f4382127b99ed46c55, type: 3}
   m_ShaderKeywords: 
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
@@ -85,8 +85,8 @@ Material:
     - _SpecularHighlights: 1
     - _SrcBlend: 1
     - _UVSec: 0
-    - _WireframeSmoothing: 0.27
-    - _WireframeThickness: 0.76
+    - _WireframeSmoothing: 0
+    - _WireframeThickness: 0.5
     - _ZWrite: 1
     m_Colors:
     - _Color: {r: 0.87624145, g: 0.9433962, b: 0.057849795, a: 1}
