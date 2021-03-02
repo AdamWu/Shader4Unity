@@ -89,6 +89,7 @@
 			o.Normal = normalize(float3(-(dhA.xy + dhB.xy), 1));
 
 			fixed4 c = (texA + texB) * _Color;
+			c.a = _Color.a;
             o.Albedo = c.rgb;
             o.Metallic = _Metallic;
             o.Smoothness = _Glossiness;

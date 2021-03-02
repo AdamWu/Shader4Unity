@@ -78,23 +78,26 @@ Material:
     - _GlossMapScale: 1
     - _Glossiness: 0.8
     - _GlossyReflections: 1
-    - _GridResolution: 3
-    - _HeightScale: 0.1
+    - _GridResolution: 4
+    - _HeightScale: 0.2
     - _HeightScaleModulated: 9
     - _Metallic: 0
     - _Mode: 0
     - _OcclusionStrength: 1
     - _Parallax: 0.02
+    - _RefractionStrength: 1
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _Speed: 1
     - _SrcBlend: 1
-    - _Tiling: 3
-    - _TilingModulated: 10
+    - _Tiling: 2
+    - _TilingModulated: 3
     - _UJump: 0
     - _UVSec: 0
     - _VJump: 0
+    - _WaterFogDensity: 1
     - _ZWrite: 1
     m_Colors:
-    - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _Color: {r: 1, g: 1, b: 1, a: 0.49803922}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
+    - _WaterFogColor: {r: 0.05206478, g: 0.40382296, b: 0.735849, a: 0}
