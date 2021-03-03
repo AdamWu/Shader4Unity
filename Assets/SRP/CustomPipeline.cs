@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.Rendering;
+using Unity.Collections;
 
 public class CustomPipeline : RenderPipeline
 {
@@ -152,6 +153,17 @@ public class CustomPipeline : RenderPipeline
         for (; i < maxVisibleLights; i++)
         {
             visibleLightColors[i] = Color.clear;
+        }
+
+        // 移除列表中不可见的灯光
+        if (cullingResults.visibleLights.Length > maxVisibleLights)
+        {
+            NativeArray<int> lightIndices = cullingResults.GetLightIndexMap(Allocator.Temp);
+            for (i = maxVisibleLights; i < cullingResults.visibleLights.Length; i++)
+            {
+                lightIndices[i] = -1;
+            }
+            cullingResults.SetLightIndexMap(lightIndices);
         }
     }
 }
