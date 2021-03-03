@@ -15,6 +15,15 @@ public class CustomPipeline : RenderPipeline
 
     CommandBuffer cameraBuffer = new CommandBuffer { name = "Render Camera" };
 
+    bool enableDynamicBatching = false;
+    bool enableInstancing = false;
+
+    public CustomPipeline(bool enableDynamicBatching, bool enableInstancing)
+    {
+        this.enableDynamicBatching = enableDynamicBatching;
+        this.enableInstancing = enableInstancing;
+    }
+
     protected override void Render(ScriptableRenderContext context, Camera[] cameras)
     {
         for(int i = 0; i < cameras.Length; i ++)
@@ -46,6 +55,8 @@ public class CustomPipeline : RenderPipeline
         // draw oqaque mesh
         var sortingSettings = new SortingSettings(camera);
         var drawSettings = new DrawingSettings(unlitShaderTagId, sortingSettings);
+        drawSettings.enableDynamicBatching = enableDynamicBatching;
+        drawSettings.enableInstancing = true;// enableInstancing;
         for (int i = 0; i < legacyShaderTagIds.Length; i ++)
         {
             drawSettings.SetShaderPassName(i+1, legacyShaderTagIds[i]);

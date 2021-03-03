@@ -14,8 +14,7 @@
 #endif
 
 UNITY_INSTANCING_BUFFER_START(InstanceProperties)
-	//float4 _Color;
-	UNITY_DEFINE_INSTANCED_PROP(float4, _Color)
+UNITY_DEFINE_INSTANCED_PROP(float4, _Color)
 UNITY_INSTANCING_BUFFER_END(InstanceProperties)
 
 sampler2D _MainTex;

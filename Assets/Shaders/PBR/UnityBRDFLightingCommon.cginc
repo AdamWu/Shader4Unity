@@ -65,8 +65,7 @@ struct v2f
 };
 
 UNITY_INSTANCING_BUFFER_START(InstanceProperties)
-	//float4 _Color;
-	UNITY_DEFINE_INSTANCED_PROP(float4, _Color)
+UNITY_DEFINE_INSTANCED_PROP(float4, _Color)
 UNITY_INSTANCING_BUFFER_END(InstanceProperties)
 
 float _Cutoff;
