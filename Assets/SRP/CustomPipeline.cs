@@ -104,8 +104,11 @@ public class CustomPipeline : RenderPipeline
         var drawSettings = new DrawRendererSettings(camera, unlitShaderTagId);
         drawSettings.flags = drawFlags;
         drawSettings.sorting.flags = SortFlags.CommonOpaque;
-        drawSettings.rendererConfiguration = RendererConfiguration.PerObjectLightIndices8;
-        
+        if (cullingResults.visibleLights.Count > 0)
+        {
+            drawSettings.rendererConfiguration = RendererConfiguration.PerObjectLightIndices8;
+        }
+
         for (int i = 0; i < legacyShaderTagIds.Length; i ++)
         {
             drawSettings.SetShaderPassName(i+1, legacyShaderTagIds[i]);
