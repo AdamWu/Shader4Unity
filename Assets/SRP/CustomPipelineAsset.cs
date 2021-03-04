@@ -1,5 +1,7 @@
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.Experimental.Rendering;
+
 
 [CreateAssetMenu(menuName = "Rendering/Custom Pipeline")]
 public class CustomPipelineAsset : RenderPipelineAsset
@@ -9,8 +11,9 @@ public class CustomPipelineAsset : RenderPipelineAsset
     [SerializeField]
     bool instancing;
 
-    protected override RenderPipeline CreatePipeline()
+    protected override IRenderPipeline InternalCreatePipeline()
     {
         return new CustomPipeline(dynamicBatching, instancing);
     }
 }
+
