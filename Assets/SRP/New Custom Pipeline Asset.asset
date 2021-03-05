@@ -14,4 +14,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   dynamicBatching: 1
   instancing: 1
-  shadowMapSize: 256
+  shadowMapSize: 512
