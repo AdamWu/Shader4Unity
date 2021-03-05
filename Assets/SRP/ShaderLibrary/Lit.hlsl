@@ -14,6 +14,15 @@ float4 unity_LightIndicesOffsetAndCount;
 float4 unity_4LightIndices0, unity_4LightIndices1;
 CBUFFER_END
 
+CBUFFER_START(UnityPerCamera)
+float3 _WorldSpaceCameraPos;
+CBUFFER_END
+
+float DistanceToCameraSqr(float3 worldPos) {
+	float3 cameraToFragment = worldPos - _WorldSpaceCameraPos;
+	return dot(cameraToFragment, cameraToFragment);
+}
+
 #define MAX_VISIBLE_LIGHTS 16
 
 CBUFFER_START(_LightBuffer)
@@ -25,36 +34,51 @@ CBUFFER_END
 
 CBUFFER_START(_ShadowBuffer)
 float4x4 _WorldToShadowMatrices[MAX_VISIBLE_LIGHTS];
+float4x4 _WorldToShadowCascadeMatrices[4];
 float4 _ShadowData[MAX_VISIBLE_LIGHTS];// x:strength y:hard or soft
-float4 _ShadowMapSize;
+float4 _ShadowMapSize, _CascadedShadowMapSize;
+float4 _GlobalShadowData;
+float _CascadedShadowStrength;
 CBUFFER_END
 
 TEXTURE2D_SHADOW(_ShadowMap);
 SAMPLER_CMP(sampler_ShadowMap);
 
-float HardShadowAttenuation(float4 shadowPos) {
-	return SAMPLE_TEXTURE2D_SHADOW(_ShadowMap, sampler_ShadowMap, shadowPos.xyz);
+TEXTURE2D_SHADOW(_CascadedShadowMap);
+SAMPLER_CMP(sampler_CascadedShadowMap);
+
+float HardShadowAttenuation(float4 shadowPos, bool cascade = false) {
+	cascade = false;
+	if (cascade) {
+		return SAMPLE_TEXTURE2D_SHADOW(_CascadedShadowMap, sampler_CascadedShadowMap, shadowPos.xyz);
+	}
+	else {
+		return SAMPLE_TEXTURE2D_SHADOW(_ShadowMap, sampler_ShadowMap, shadowPos.xyz);
+	}
 }
 
-float SoftShadowAttenuation(float4 shadowPos) {
+float SoftShadowAttenuation(float4 shadowPos, bool cascade = false) {
 	real tentWeights[9];
 	real2 tentUVs[9];
-	SampleShadow_ComputeSamples_Tent_5x5(_ShadowMapSize, shadowPos.xy, tentWeights, tentUVs);
+	float4 size = cascade ? _CascadedShadowMapSize : _ShadowMapSize;
+	SampleShadow_ComputeSamples_Tent_5x5(size, shadowPos.xy, tentWeights, tentUVs);
 	float attenuation = 0;
 	for (int i = 0; i < 9; i++) {
-		attenuation += tentWeights[i] * SAMPLE_TEXTURE2D_SHADOW(_ShadowMap, sampler_ShadowMap, float3(tentUVs[i].xy, shadowPos.z));
+		attenuation += tentWeights[i] * HardShadowAttenuation(float4(tentUVs[i].xy, shadowPos.z, 0), cascade);
 	}
 	return attenuation;
 }
 
 float ShadowAttenuation(int index, float3 worldPos) {
 
-	if (_ShadowData[index].x <= 0) {
+	if (_ShadowData[index].x <= 0 || DistanceToCameraSqr(worldPos) > _GlobalShadowData.y) {
 		return 1.0;
 	}
 
 	float4 shadowPos = mul(_WorldToShadowMatrices[index], float4(worldPos, 1.0));
 	shadowPos.xyz /= shadowPos.w;
+	shadowPos.xy = saturate(shadowPos.xy);
+	shadowPos.xy = shadowPos.xy * _GlobalShadowData.x + _ShadowData[index].zw;
 	float attenuation;
 	if (_ShadowData[index].y == 0) {
 		attenuation = HardShadowAttenuation(shadowPos);
@@ -63,6 +87,21 @@ float ShadowAttenuation(int index, float3 worldPos) {
 		attenuation = SoftShadowAttenuation(shadowPos);
 	}
 	return lerp(1, attenuation, _ShadowData[index].x);
+}
+
+float CascadedShadowAttenuation(float3 worldPos) {
+#if !defined(_CASCADED_SHADOWS_HARD) && !defined(_CASCADED_SHADOWS_SOFT)
+	return 1.0;
+#endif
+	float cascadeIndex = 2;
+	float4 shadowPos = mul(_WorldToShadowCascadeMatrices[cascadeIndex], float4(worldPos, 1.0));
+	float attenuation;
+#if defined(_CASCADED_SHADOWS_HARD)
+	attenuation = HardShadowAttenuation(shadowPos, true);
+#else
+	attenuation = SoftShadowAttenuation(shadowPos, true);
+#endif
+	return lerp(1, attenuation, _CascadedShadowStrength);
 }
 
 float3 DiffuseLight(int index, float3 normal, float3 worldPos, float shadowAttenuation) {
@@ -87,6 +126,16 @@ float3 DiffuseLight(int index, float3 normal, float3 worldPos, float shadowAtten
 	float distanceSqr = max(dot(lightVector, lightVector), 0.00001);
 	diffuse *= shadowAttenuation * spotFade * rangeFade / distanceSqr;
 
+	return diffuse * lightColor;
+}
+
+float3 MainLight(float3 normal, float3 worldPos)
+{
+	float shadowAttenuation = CascadedShadowAttenuation(worldPos);
+	float3 lightColor = _VisibleLightColors[0].rgb;
+	float3 lightDirection = _VisibleLightDirectionsOrPositions[0].xyz;
+	float diffuse = saturate(dot(normal, lightDirection));
+	diffuse *= shadowAttenuation;
 	return diffuse * lightColor;
 }
 
@@ -135,18 +184,23 @@ float4 LitPassFragment(VertexOutput input) : SV_TARGET{
 	input.normal = normalize(input.normal);
 	float3 albedo = UNITY_ACCESS_INSTANCED_PROP(PerInstance, _Color).rgb;
 
-	float3 diffuseLight = 0;
+	//float3 diffuseLight = 0;
+	float3 diffuseLight = input.vertexLighting;
+//#if defined(_CASCADE_SHADOWS_HARD) || defined(_CASCADE_SHADOWS_SOFT)
+	diffuseLight += MainLight(input.normal, input.worldPos);
+//#endif
 	for (int i = 0; i < min(unity_LightIndicesOffsetAndCount.y, 4); i++) {
 		int lightIndex = unity_4LightIndices0[i];
 		float shadowAttenuation = ShadowAttenuation(lightIndex, input.worldPos);
 		diffuseLight += DiffuseLight(lightIndex, input.normal, input.worldPos, shadowAttenuation);
 	}
-	//float3 diffuseLight = input.vertexLighting;
+	/*
 	for (int i = 4; i < min(unity_LightIndicesOffsetAndCount.y, 8); i++) {
 		int lightIndex = unity_4LightIndices1[i-4];
 		float shadowAttenuation = ShadowAttenuation(lightIndex, input.worldPos);
 		diffuseLight += DiffuseLight(lightIndex, input.normal, input.worldPos, shadowAttenuation);
 	}
+	*/
 
 	float3 color = diffuseLight * albedo;
 	return float4(color, 1);

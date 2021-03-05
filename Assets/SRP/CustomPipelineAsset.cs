@@ -14,6 +14,12 @@ public class CustomPipelineAsset : RenderPipelineAsset
         _2048 = 2048,
         _4096 = 4096
     }
+    public enum ShadowCascades
+    {
+        Zero = 0,
+        Two = 2,
+        Four = 4
+    }
 
     [SerializeField]
     bool dynamicBatching;
@@ -22,10 +28,19 @@ public class CustomPipelineAsset : RenderPipelineAsset
 
     [SerializeField]
     ShadowMapSize shadowMapSize = ShadowMapSize._1024;
+    [SerializeField]
+    float shadowDistance = 100f;
+    [SerializeField]
+    ShadowCascades shadowCascades = ShadowCascades.Four;
+    [SerializeField, HideInInspector]
+    float twoCascadesSplit = 0.25f;
+    [SerializeField, HideInInspector]
+    Vector3 fourCascadesSplit = new Vector3(0.067f, 0.2f, 0.467f);
 
     protected override IRenderPipeline InternalCreatePipeline()
     {
-        return new CustomPipeline(dynamicBatching, instancing, (int)shadowMapSize);
+        Vector3 shadowCascadeSplit = shadowCascades == ShadowCascades.Four ? fourCascadesSplit : new Vector3(twoCascadesSplit, 0);
+        return new CustomPipeline(dynamicBatching, instancing, (int)shadowMapSize, shadowDistance, (int)shadowCascades, shadowCascadeSplit);
     }
 }
 
