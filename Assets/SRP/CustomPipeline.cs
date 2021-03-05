@@ -156,7 +156,7 @@ public class CustomPipeline : RenderPipeline
         shadowTileCount = 0;
         for (int i = 0; i < cull.visibleLights.Count; i++)
         {
-            if (i >= maxVisibleLights) break;
+            if (i == maxVisibleLights) break;
             
             VisibleLight light = cull.visibleLights[i];
             visibleLightColors[i] = light.finalColor;
@@ -257,15 +257,10 @@ public class CustomPipeline : RenderPipeline
         bool softShadows = false;
         for (int i = 0; i < cull.visibleLights.Count; i++)
         {
-            if (i == maxVisibleLights)
-            {
-                break;
-            }
-            if (shadowData[i].x <= 0f)
-            {
-                continue;
-            }
+            if (i == maxVisibleLights) break;
 
+            //if (shadowData[i].x <= 0f) continue;
+            
             Matrix4x4 viewMatrix, projectionMatrix;
             ShadowSplitData splitData;
             if (!cull.ComputeSpotShadowMatricesAndCullingPrimitives(i, out viewMatrix, out projectionMatrix, out splitData))
@@ -332,8 +327,8 @@ public class CustomPipeline : RenderPipeline
         shadowBuffer.SetGlobalVectorArray(shadowDataId, shadowData);
         float invShadowMapSize = 1f / shadowMapSize;
         shadowBuffer.SetGlobalVector(shadowMapSizeId, new Vector4(invShadowMapSize, invShadowMapSize, shadowMapSize, shadowMapSize));
-        CoreUtils.SetKeyword(shadowBuffer, shadowsHardKeyword, hardShadows);
-        CoreUtils.SetKeyword(shadowBuffer, shadowsSoftKeyword, softShadows);
+        //CoreUtils.SetKeyword(shadowBuffer, shadowsHardKeyword, hardShadows);
+        //CoreUtils.SetKeyword(shadowBuffer, shadowsSoftKeyword, softShadows);
         shadowBuffer.EndSample("Render Shadows");
         context.ExecuteCommandBuffer(shadowBuffer);
         shadowBuffer.Clear();

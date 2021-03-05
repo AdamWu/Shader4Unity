@@ -93,11 +93,11 @@ float3 DiffuseLight(int index, float3 normal, float3 worldPos, float shadowAtten
 	float4 lightAttenuation = _VisibleLightAttenuations[index];
 	float3 spotDirection = _VisibleLightSpotDirections[index].xyz;
 
-	float3 lightVector =
-		lightPositionOrDirection.xyz - worldPos * lightPositionOrDirection.w;
+	float3 lightVector = lightPositionOrDirection.xyz - worldPos * lightPositionOrDirection.w;
 	float3 lightDirection = normalize(lightVector);
 	float diffuse = saturate(dot(normal, lightDirection));
 
+	// attenuation
 	float rangeFade = dot(lightVector, lightVector) * lightAttenuation.x;
 	rangeFade = saturate(1.0 - rangeFade * rangeFade);
 	rangeFade *= rangeFade;
