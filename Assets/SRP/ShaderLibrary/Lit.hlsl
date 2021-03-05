@@ -52,6 +52,12 @@ float SoftShadowAttenuation(float4 shadowPos) {
 }
 
 float ShadowAttenuation(int index, float3 worldPos) {
+
+	float4 shadowPos = mul(_WorldToShadowMatrices[index], float4(worldPos, 1.0));
+	shadowPos.xyz /= shadowPos.w;
+	return SAMPLE_TEXTURE2D_SHADOW(_ShadowMap, sampler_ShadowMap, shadowPos.xyz);
+
+	/*
 #if !defined(_SHADOWS_HARD) && !defined(_SHADOWS_SOFT)
 	return 1.0;
 #endif
@@ -78,6 +84,7 @@ float ShadowAttenuation(int index, float3 worldPos) {
 #endif
 
 	return lerp(1, attenuation, _ShadowData[index].x);
+	*/
 }
 
 float3 DiffuseLight(
