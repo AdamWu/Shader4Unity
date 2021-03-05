@@ -5,18 +5,17 @@ using Conditional = System.Diagnostics.ConditionalAttribute;
 
 public class CustomPipeline : RenderPipeline
 {
-    const int maxVisibleLights = 16;
-
-    const string shadowsHardKeyword = "_SHADOWS_HARD";
-    const string shadowsSoftKeyword = "_SHADOWS_SOFT";
-
     // light
+    const int maxVisibleLights = 16;
     static int visibleLightColorsId = Shader.PropertyToID("_VisibleLightColors");
     static int visibleLightDirectionsOrPositionsId = Shader.PropertyToID("_VisibleLightDirectionsOrPositions");
     static int visibleLightAttenuationsId = Shader.PropertyToID("_VisibleLightAttenuations");
     static int visibleLightSpotDirectionsId = Shader.PropertyToID("_VisibleLightSpotDirections");
     static int lightIndicesOffsetAndCountID = Shader.PropertyToID("unity_LightIndicesOffsetAndCount");
+
     // shadowmap
+    const string shadowsHardKeyword = "_SHADOWS_HARD";
+    const string shadowsSoftKeyword = "_SHADOWS_SOFT";
     static int shadowMapId = Shader.PropertyToID("_ShadowMap");
     static int worldToShadowMatricesId = Shader.PropertyToID("_WorldToShadowMatrices");
     static int shadowBiasId = Shader.PropertyToID("_ShadowBias");
@@ -153,10 +152,8 @@ public class CustomPipeline : RenderPipeline
         shadowTileCount = 0;
         for (int i = 0; i < cull.visibleLights.Count; i++)
         {
-            if (i == maxVisibleLights)
-            {
-                break;
-            }
+            if (i >= maxVisibleLights) break;
+            
             VisibleLight light = cull.visibleLights[i];
             visibleLightColors[i] = light.finalColor;
             Vector4 attenuation = Vector4.zero;
@@ -173,10 +170,8 @@ public class CustomPipeline : RenderPipeline
             }
             else
             {
-                visibleLightDirectionsOrPositions[i] =
-                    light.localToWorld.GetColumn(3);
-                attenuation.x = 1f /
-                    Mathf.Max(light.range * light.range, 0.00001f);
+                visibleLightDirectionsOrPositions[i] = light.localToWorld.GetColumn(3);
+                attenuation.x = 1f / Mathf.Max(light.range * light.range, 0.00001f);
 
                 if (light.lightType == LightType.Spot)
                 {
@@ -189,23 +184,18 @@ public class CustomPipeline : RenderPipeline
                     float outerRad = Mathf.Deg2Rad * 0.5f * light.spotAngle;
                     float outerCos = Mathf.Cos(outerRad);
                     float outerTan = Mathf.Tan(outerRad);
-                    float innerCos =
-                        Mathf.Cos(Mathf.Atan((46f / 64f) * outerTan));
+                    float innerCos = Mathf.Cos(Mathf.Atan((46f / 64f) * outerTan));
                     float angleRange = Mathf.Max(innerCos - outerCos, 0.001f);
                     attenuation.z = 1f / angleRange;
                     attenuation.w = -outerCos * attenuation.z;
 
                     Light shadowLight = light.light;
                     Bounds shadowBounds;
-                    if (
-                        shadowLight.shadows != LightShadows.None &&
-                        cull.GetShadowCasterBounds(i, out shadowBounds)
-                    )
+                    if (shadowLight.shadows != LightShadows.None && cull.GetShadowCasterBounds(i, out shadowBounds))
                     {
                         shadowTileCount += 1;
                         shadow.x = shadowLight.shadowStrength;
-                        shadow.y =
-                            shadowLight.shadows == LightShadows.Soft ? 1f : 0f;
+                        shadow.y = shadowLight.shadows == LightShadows.Soft ? 1f : 0f;
                     }
                 }
             }
@@ -376,20 +366,16 @@ public class CustomPipeline : RenderPipeline
             };
         }
 
-        var drawSettings = new DrawRendererSettings(
-            camera, new ShaderPassName("ForwardBase")
-        );
-        drawSettings.SetShaderPassName(1, new ShaderPassName("PrepassBase"));
-        drawSettings.SetShaderPassName(2, new ShaderPassName("Always"));
-        drawSettings.SetShaderPassName(3, new ShaderPassName("Vertex"));
-        drawSettings.SetShaderPassName(4, new ShaderPassName("VertexLMRGBM"));
-        drawSettings.SetShaderPassName(5, new ShaderPassName("VertexLM"));
-        drawSettings.SetOverrideMaterial(errorMaterial, 0);
+        var drawSettings = new DrawRendererSettings(camera, new ShaderPassName("SRPDefaultUnlit"));
+        drawSettings.SetShaderPassName(1, new ShaderPassName("Always"));
+        drawSettings.SetShaderPassName(2, new ShaderPassName("ForwardBase"));
+        drawSettings.SetShaderPassName(3, new ShaderPassName("PrepassBase"));
+        drawSettings.SetShaderPassName(4, new ShaderPassName("Vertex"));
+        drawSettings.SetShaderPassName(5, new ShaderPassName("VertexLMRGBM"));
+        drawSettings.SetShaderPassName(6, new ShaderPassName("VertexLM"));
+        //drawSettings.SetOverrideMaterial(errorMaterial, 0);
 
         var filterSettings = new FilterRenderersSettings(true);
-
-        context.DrawRenderers(
-            cull.visibleRenderers, ref drawSettings, filterSettings
-        );
+        context.DrawRenderers(cull.visibleRenderers, ref drawSettings, filterSettings);
     }
 }

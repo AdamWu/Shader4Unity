@@ -87,9 +87,7 @@ float ShadowAttenuation(int index, float3 worldPos) {
 	*/
 }
 
-float3 DiffuseLight(
-	int index, float3 normal, float3 worldPos, float shadowAttenuation
-) {
+float3 DiffuseLight(int index, float3 normal, float3 worldPos, float shadowAttenuation) {
 	float3 lightColor = _VisibleLightColors[index].rgb;
 	float4 lightPositionOrDirection = _VisibleLightDirectionsOrPositions[index];
 	float4 lightAttenuation = _VisibleLightAttenuations[index];
@@ -148,8 +146,7 @@ VertexOutput LitPassVertex(VertexInput input) {
 	output.vertexLighting = 0;
 	for (int i = 4; i < min(unity_LightIndicesOffsetAndCount.y, 8); i++) {
 		int lightIndex = unity_4LightIndices1[i - 4];
-		output.vertexLighting +=
-			DiffuseLight(lightIndex, output.normal, output.worldPos, 1);
+		output.vertexLighting += DiffuseLight(lightIndex, output.normal, output.worldPos, 1);
 	}
 
 	return output;
@@ -160,14 +157,19 @@ float4 LitPassFragment(VertexOutput input) : SV_TARGET{
 	input.normal = normalize(input.normal);
 	float3 albedo = UNITY_ACCESS_INSTANCED_PROP(PerInstance, _Color).rgb;
 
-	float3 diffuseLight = input.vertexLighting;
+	float3 diffuseLight = 0;
 	for (int i = 0; i < min(unity_LightIndicesOffsetAndCount.y, 4); i++) {
 		int lightIndex = unity_4LightIndices0[i];
 		float shadowAttenuation = ShadowAttenuation(lightIndex, input.worldPos);
-		diffuseLight += DiffuseLight(
-			lightIndex, input.normal, input.worldPos, shadowAttenuation
-		);
+		diffuseLight += DiffuseLight(lightIndex, input.normal, input.worldPos, shadowAttenuation);
 	}
+	//float3 diffuseLight = input.vertexLighting;
+	for (int i = 4; i < min(unity_LightIndicesOffsetAndCount.y, 8); i++) {
+		int lightIndex = unity_4LightIndices1[i-4];
+		float shadowAttenuation = ShadowAttenuation(lightIndex, input.worldPos);
+		diffuseLight += DiffuseLight(lightIndex, input.normal, input.worldPos, shadowAttenuation);
+	}
+
 	float3 color = diffuseLight * albedo;
 	return float4(color, 1);
 }
