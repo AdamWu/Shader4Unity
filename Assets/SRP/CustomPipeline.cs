@@ -77,6 +77,9 @@ public class CustomPipeline : RenderPipeline
         if (cull.visibleLights.Count > 0)
         {
             ConfigureLights();
+            RenderShadows(context);
+
+            /*
             if (shadowTileCount > 0)
             {
                 RenderShadows(context);
@@ -86,6 +89,7 @@ public class CustomPipeline : RenderPipeline
                 cameraBuffer.DisableShaderKeyword(shadowsHardKeyword);
                 cameraBuffer.DisableShaderKeyword(shadowsSoftKeyword);
             }
+            */
         }
         else
         {
@@ -239,17 +243,11 @@ public class CustomPipeline : RenderPipeline
         float tileScale = 1f / split;
         Rect tileViewport = new Rect(0f, 0f, tileSize, tileSize);
 
-        shadowMap = RenderTexture.GetTemporary(
-            shadowMapSize, shadowMapSize, 16, RenderTextureFormat.Shadowmap
-        );
+        shadowMap = RenderTexture.GetTemporary(shadowMapSize, shadowMapSize, 16, RenderTextureFormat.Shadowmap);
         shadowMap.filterMode = FilterMode.Bilinear;
         shadowMap.wrapMode = TextureWrapMode.Clamp;
 
-        CoreUtils.SetRenderTarget(
-            shadowBuffer, shadowMap,
-            RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store,
-            ClearFlag.Depth
-        );
+        CoreUtils.SetRenderTarget(shadowBuffer, shadowMap, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store, ClearFlag.Depth);
         shadowBuffer.BeginSample("Render Shadows");
         context.ExecuteCommandBuffer(shadowBuffer);
         shadowBuffer.Clear();
@@ -270,9 +268,7 @@ public class CustomPipeline : RenderPipeline
 
             Matrix4x4 viewMatrix, projectionMatrix;
             ShadowSplitData splitData;
-            if (!cull.ComputeSpotShadowMatricesAndCullingPrimitives(
-                i, out viewMatrix, out projectionMatrix, out splitData
-            ))
+            if (!cull.ComputeSpotShadowMatricesAndCullingPrimitives(i, out viewMatrix, out projectionMatrix, out splitData))
             {
                 shadowData[i].x = 0f;
                 continue;
@@ -285,18 +281,14 @@ public class CustomPipeline : RenderPipeline
             if (split > 1)
             {
                 shadowBuffer.SetViewport(tileViewport);
-                shadowBuffer.EnableScissorRect(new Rect(
-                    tileViewport.x + 4f, tileViewport.y + 4f,
-                    tileSize - 8f, tileSize - 8f
-                ));
+                shadowBuffer.EnableScissorRect(new Rect(tileViewport.x + 4f, tileViewport.y + 4f,tileSize - 8f, tileSize - 8f));
             }
             shadowBuffer.SetViewProjectionMatrices(viewMatrix, projectionMatrix);
-            shadowBuffer.SetGlobalFloat(
-                shadowBiasId, cull.visibleLights[i].light.shadowBias
-            );
+            shadowBuffer.SetGlobalFloat(shadowBiasId, cull.visibleLights[i].light.shadowBias);
             context.ExecuteCommandBuffer(shadowBuffer);
             shadowBuffer.Clear();
 
+            // draw shadow for light i
             var shadowSettings = new DrawShadowsSettings(cull, i);
             context.DrawShadows(ref shadowSettings);
 
@@ -310,8 +302,7 @@ public class CustomPipeline : RenderPipeline
             var scaleOffset = Matrix4x4.identity;
             scaleOffset.m00 = scaleOffset.m11 = scaleOffset.m22 = 0.5f;
             scaleOffset.m03 = scaleOffset.m13 = scaleOffset.m23 = 0.5f;
-            worldToShadowMatrices[i] =
-                scaleOffset * (projectionMatrix * viewMatrix);
+            worldToShadowMatrices[i] = scaleOffset * (projectionMatrix * viewMatrix);
 
             if (split > 1)
             {
@@ -337,16 +328,10 @@ public class CustomPipeline : RenderPipeline
             shadowBuffer.DisableScissorRect();
         }
         shadowBuffer.SetGlobalTexture(shadowMapId, shadowMap);
-        shadowBuffer.SetGlobalMatrixArray(
-            worldToShadowMatricesId, worldToShadowMatrices
-        );
+        shadowBuffer.SetGlobalMatrixArray(worldToShadowMatricesId, worldToShadowMatrices);
         shadowBuffer.SetGlobalVectorArray(shadowDataId, shadowData);
         float invShadowMapSize = 1f / shadowMapSize;
-        shadowBuffer.SetGlobalVector(
-            shadowMapSizeId, new Vector4(
-                invShadowMapSize, invShadowMapSize, shadowMapSize, shadowMapSize
-            )
-        );
+        shadowBuffer.SetGlobalVector(shadowMapSizeId, new Vector4(invShadowMapSize, invShadowMapSize, shadowMapSize, shadowMapSize));
         CoreUtils.SetKeyword(shadowBuffer, shadowsHardKeyword, hardShadows);
         CoreUtils.SetKeyword(shadowBuffer, shadowsSoftKeyword, softShadows);
         shadowBuffer.EndSample("Render Shadows");
