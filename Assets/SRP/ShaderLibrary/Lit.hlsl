@@ -35,6 +35,7 @@ CBUFFER_END
 CBUFFER_START(_ShadowBuffer)
 float4x4 _WorldToShadowMatrices[MAX_VISIBLE_LIGHTS];
 float4x4 _WorldToShadowCascadeMatrices[4];
+float4 _CascadeCullingSpheres[4];
 float4 _ShadowData[MAX_VISIBLE_LIGHTS];// x:strength y:hard or soft
 float4 _ShadowMapSize, _CascadedShadowMapSize;
 float4 _GlobalShadowData;
@@ -89,11 +90,26 @@ float ShadowAttenuation(int index, float3 worldPos) {
 	return lerp(1, attenuation, _ShadowData[index].x);
 }
 
+
+float InsideCascadeCullingSphere(int index, float3 worldPos)
+{
+	float4 s = _CascadeCullingSpheres[index];
+	return dot(worldPos - s.xyz, worldPos - s.xyz) < s.w;
+}
 float CascadedShadowAttenuation(float3 worldPos) {
 #if !defined(_CASCADED_SHADOWS_HARD) && !defined(_CASCADED_SHADOWS_SOFT)
 	return 1.0;
 #endif
-	float cascadeIndex = 2;
+	float4 cascadeFlags = float4(
+		InsideCascadeCullingSphere(0, worldPos),
+		InsideCascadeCullingSphere(1, worldPos),
+		InsideCascadeCullingSphere(2, worldPos),
+		InsideCascadeCullingSphere(3, worldPos)
+		);
+	//return dot(cascadeFlags, 0.25);
+	cascadeFlags.yzw = saturate(cascadeFlags.yzw - cascadeFlags.xyz);
+	float cascadeIndex = dot(cascadeFlags, float4(0, 1, 2, 3));
+	//float cascadeIndex = 3;
 	float4 shadowPos = mul(_WorldToShadowCascadeMatrices[cascadeIndex], float4(worldPos, 1.0));
 	float attenuation;
 #if defined(_CASCADED_SHADOWS_HARD)
@@ -103,6 +119,7 @@ float CascadedShadowAttenuation(float3 worldPos) {
 #endif
 	return lerp(1, attenuation, _CascadedShadowStrength);
 }
+
 
 float3 DiffuseLight(int index, float3 normal, float3 worldPos, float shadowAttenuation) {
 	float3 lightColor = _VisibleLightColors[index].rgb;

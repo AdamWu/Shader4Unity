@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b581950b0651e0440926fec638632340, type: 3}
   m_Name: New Custom Pipeline Asset
   m_EditorClassIdentifier: 
-  dynamicBatching: 1
+  dynamicBatching: 0
   instancing: 1
-  shadowMapSize: 512
-  shadowDistance: 100
+  shadowMapSize: 4096
+  shadowDistance: 30
   shadowCascades: 4
   twoCascadesSplit: 0.25
-  fourCascadesSplit: {x: 0.067, y: 0.2, z: 0.467}
+  fourCascadesSplit: {x: 0.18748194, y: 0.40481925, z: 0.68687963}

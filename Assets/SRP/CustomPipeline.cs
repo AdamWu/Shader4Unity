@@ -28,6 +28,7 @@ public class CustomPipeline : RenderPipeline
     static int worldToShadowCacadeMatricesId = Shader.PropertyToID("_WorldToShadowCascadeMatrices");
     static int cascadedShadowMapSizeId = Shader.PropertyToID("_CascadedShadowMapSize");
     static int cascadedShadowStrengthId = Shader.PropertyToID("_CascadedShadowStrength");
+    static int cascadeCullingSpheresId = Shader.PropertyToID("_CascadeCullingSpheres");
 
     CommandBuffer cameraBuffer = new CommandBuffer { name = "Render Camera" };
     CommandBuffer shadowBuffer = new CommandBuffer { name = "Render Shadows" };
@@ -51,6 +52,7 @@ public class CustomPipeline : RenderPipeline
     Vector3 shadowCascadeSplit;
     bool mainLightExists;
     Matrix4x4[] worldToShadowCascadeMatrices = new Matrix4x4[4];
+    Vector4[] cascadeCullingSpheres = new Vector4[4];
 
     Material errorMaterial;
     
@@ -226,9 +228,13 @@ public class CustomPipeline : RenderPipeline
             shadowData[i] = shadow;
         }
 
-        if (cull.visibleLights.Count > maxVisibleLights)
+        if (mainLightExists || cull.visibleLights.Count > maxVisibleLights)
         {
             int[] lightIndices = cull.GetLightIndexMap();
+            if (mainLightExists)
+            {
+                lightIndices[0] = -1;
+            }
             for (int i = maxVisibleLights; i < cull.visibleLights.Count; i++)
             {
                 lightIndices[i] = -1;
@@ -409,7 +415,8 @@ public class CustomPipeline : RenderPipeline
             shadowBuffer.Clear();
 
             // draw shadow for light i
-            shadowSettings.splitData.cullingSphere = splitData.cullingSphere;
+            cascadeCullingSpheres[i] = shadowSettings.splitData.cullingSphere = splitData.cullingSphere;
+            cascadeCullingSpheres[i].w *= splitData.cullingSphere.w;
             context.DrawShadows(ref shadowSettings);
             
             // save matrix
@@ -423,6 +430,7 @@ public class CustomPipeline : RenderPipeline
         // ²Ã¼ô½áÊø
         shadowBuffer.DisableScissorRect();
         shadowBuffer.SetGlobalTexture(cascadedShaowMapId, cascadedShadowMap);
+        shadowBuffer.SetGlobalVectorArray(cascadeCullingSpheresId, cascadeCullingSpheres);
         shadowBuffer.SetGlobalMatrixArray(worldToShadowCacadeMatricesId, worldToShadowCascadeMatrices);
         float invShadowMapSize = 1f / shadowMapSize;
         shadowBuffer.SetGlobalVector(cascadedShadowMapSizeId, new Vector4(invShadowMapSize, invShadowMapSize, shadowMapSize, shadowMapSize));
