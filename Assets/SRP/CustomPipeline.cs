@@ -110,7 +110,10 @@ public class CustomPipeline : RenderPipeline
                 cameraBuffer.DisableShaderKeyword(cascadedShadowsHardKeyword);
                 cameraBuffer.DisableShaderKeyword(cascadedShadowsSoftKeyword);
             }
-            RenderShadows(context);
+            if (shadowTileCount > 0)
+            {
+                RenderShadows(context);
+            }
         }
         else
         {
@@ -155,7 +158,7 @@ public class CustomPipeline : RenderPipeline
         filterSettings.renderQueueRange = RenderQueueRange.transparent;
         context.DrawRenderers(cull.visibleRenderers, ref drawSettings, filterSettings);
 
-        DrawDefaultPipeline(context, camera);
+        //DrawDefaultPipeline(context, camera);
 
         cameraBuffer.EndSample("Render Camera");
         context.ExecuteCommandBuffer(cameraBuffer);
@@ -422,7 +425,7 @@ public class CustomPipeline : RenderPipeline
 
             // draw shadow for light i
             cascadeCullingSpheres[i] = shadowSettings.splitData.cullingSphere = splitData.cullingSphere;
-            cascadeCullingSpheres[i].w *= cascadeCullingSpheres[i].w * 1.2f;
+            cascadeCullingSpheres[i].w *= cascadeCullingSpheres[i].w * 1.0f;
             context.DrawShadows(ref shadowSettings);
             
             // save matrix
