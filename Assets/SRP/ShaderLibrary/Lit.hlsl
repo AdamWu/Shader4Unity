@@ -8,20 +8,15 @@ CBUFFER_START(UnityPerFrame)
 float4x4 unity_MatrixVP;
 CBUFFER_END
 
+CBUFFER_START(UnityPerCamera)
+float3 _WorldSpaceCameraPos;
+CBUFFER_END
+
 CBUFFER_START(UnityPerDraw)
 float4x4 unity_ObjectToWorld;
 float4 unity_LightIndicesOffsetAndCount;
 float4 unity_4LightIndices0, unity_4LightIndices1;
 CBUFFER_END
-
-CBUFFER_START(UnityPerCamera)
-float3 _WorldSpaceCameraPos;
-CBUFFER_END
-
-float DistanceToCameraSqr(float3 worldPos) {
-	float3 cameraToFragment = worldPos - _WorldSpaceCameraPos;
-	return dot(cameraToFragment, cameraToFragment);
-}
 
 #define MAX_VISIBLE_LIGHTS 16
 
@@ -37,7 +32,8 @@ float4x4 _WorldToShadowMatrices[MAX_VISIBLE_LIGHTS];
 float4x4 _WorldToShadowCascadeMatrices[4];
 float4 _CascadeCullingSpheres[4];
 float4 _ShadowData[MAX_VISIBLE_LIGHTS];// x:strength y:hard or soft
-float4 _ShadowMapSize, _CascadedShadowMapSize;
+float4 _ShadowMapSize;
+float4 _CascadedShadowMapSize;
 float4 _GlobalShadowData;
 float _CascadedShadowStrength;
 CBUFFER_END
@@ -47,6 +43,11 @@ SAMPLER_CMP(sampler_ShadowMap);
 
 TEXTURE2D_SHADOW(_CascadedShadowMap);
 SAMPLER_CMP(sampler_CascadedShadowMap);
+
+float DistanceToCameraSqr(float3 worldPos) {
+	float3 cameraToFragment = worldPos - _WorldSpaceCameraPos;
+	return dot(cameraToFragment, cameraToFragment);
+}
 
 float HardShadowAttenuation(float4 shadowPos, bool cascade = false) {
 	cascade = false;
@@ -108,7 +109,7 @@ float CascadedShadowAttenuation(float3 worldPos) {
 		);
 	//return dot(cascadeFlags, 0.25);
 	cascadeFlags.yzw = saturate(cascadeFlags.yzw - cascadeFlags.xyz);
-	float cascadeIndex = dot(cascadeFlags, float4(0, 1, 2, 3));
+	float cascadeIndex = 4 - dot(cascadeFlags, float4(4, 3, 2, 1));
 	//float cascadeIndex = 3;
 	float4 shadowPos = mul(_WorldToShadowCascadeMatrices[cascadeIndex], float4(worldPos, 1.0));
 	float attenuation;
