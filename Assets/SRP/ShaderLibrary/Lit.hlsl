@@ -30,7 +30,7 @@ CBUFFER_END
 CBUFFER_START(_ShadowBuffer)
 float4x4 _WorldToShadowMatrices[MAX_VISIBLE_LIGHTS];
 float4x4 _WorldToShadowCascadeMatrices[5];
-float4 _CascadeCullingSpheres[4];
+float4 _CascadeCullingSpheres[4]; // w:r^2
 float4 _ShadowData[MAX_VISIBLE_LIGHTS];// x:strength y:hard or soft
 float4 _ShadowMapSize;
 float4 _CascadedShadowMapSize;

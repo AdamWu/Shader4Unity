@@ -397,6 +397,7 @@ public class CustomPipeline : RenderPipeline
         cascadedShadowMap = SetShadowRenderTarget();
 
         shadowBuffer.BeginSample("Render Shadows");
+        shadowBuffer.SetGlobalVector(globalShadowDataId, new Vector4(0, shadowDistance * shadowDistance));
         context.ExecuteCommandBuffer(shadowBuffer);
         shadowBuffer.Clear();
 
@@ -421,7 +422,7 @@ public class CustomPipeline : RenderPipeline
 
             // draw shadow for light i
             cascadeCullingSpheres[i] = shadowSettings.splitData.cullingSphere = splitData.cullingSphere;
-            cascadeCullingSpheres[i].w *= splitData.cullingSphere.w;
+            cascadeCullingSpheres[i].w *= cascadeCullingSpheres[i].w * 1.2f;
             context.DrawShadows(ref shadowSettings);
             
             // save matrix
