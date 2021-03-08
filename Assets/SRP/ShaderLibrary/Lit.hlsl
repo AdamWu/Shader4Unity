@@ -50,7 +50,6 @@ float DistanceToCameraSqr(float3 worldPos) {
 }
 
 float HardShadowAttenuation(float4 shadowPos, bool cascade = false) {
-	cascade = false;
 	if (cascade) {
 		return SAMPLE_TEXTURE2D_SHADOW(_CascadedShadowMap, sampler_CascadedShadowMap, shadowPos.xyz);
 	}
@@ -72,7 +71,6 @@ float SoftShadowAttenuation(float4 shadowPos, bool cascade = false) {
 }
 
 float ShadowAttenuation(int index, float3 worldPos) {
-
 	if (_ShadowData[index].x <= 0 || DistanceToCameraSqr(worldPos) > _GlobalShadowData.y) {
 		return 1.0;
 	}

@@ -24,7 +24,7 @@ public class CustomPipeline : RenderPipeline
     static int shadowDataId = Shader.PropertyToID("_ShadowData");
     static int shadowMapSizeId = Shader.PropertyToID("_ShadowMapSize");
     static int globalShadowDataId = Shader.PropertyToID("_GlobalShadowData");
-    static int cascadedShaowMapId = Shader.PropertyToID("_CascadedShadowMap");
+    static int cascadedShadowMapId = Shader.PropertyToID("_CascadedShadowMap");
     static int worldToShadowCascadeMatricesId = Shader.PropertyToID("_WorldToShadowCascadeMatrices");
     static int cascadedShadowMapSizeId = Shader.PropertyToID("_CascadedShadowMapSize");
     static int cascadedShadowStrengthId = Shader.PropertyToID("_CascadedShadowStrength");
@@ -434,7 +434,7 @@ public class CustomPipeline : RenderPipeline
 
         // ²Ã¼ô½áÊø
         shadowBuffer.DisableScissorRect();
-        shadowBuffer.SetGlobalTexture(cascadedShaowMapId, cascadedShadowMap);
+        shadowBuffer.SetGlobalTexture(cascadedShadowMapId, cascadedShadowMap);
         shadowBuffer.SetGlobalVectorArray(cascadeCullingSpheresId, cascadeCullingSpheres);
         shadowBuffer.SetGlobalMatrixArray(worldToShadowCascadeMatricesId, worldToShadowCascadeMatrices);
         float invShadowMapSize = 1f / shadowMapSize;
