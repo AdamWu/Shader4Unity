@@ -3,13 +3,14 @@
 
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Shadow/ShadowSamplingTent.hlsl"
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/ImageBasedLighting.hlsl"
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/EntityLighting.hlsl"
 
 #include "../ShaderLibrary/Lighting.hlsl"
 
 CBUFFER_START(UnityPerMaterial)
 float4 _MainTex_ST;
 float _Cutoff;
-//float _Smoothness;
 CBUFFER_END
 
 CBUFFER_START(UnityPerFrame)
@@ -21,7 +22,7 @@ float3 _WorldSpaceCameraPos;
 CBUFFER_END
 
 CBUFFER_START(UnityPerDraw)
-float4x4 unity_ObjectToWorld;
+float4x4 unity_ObjectToWorld, unity_WorldToObject;
 float4 unity_LightIndicesOffsetAndCount;
 float4 unity_4LightIndices0, unity_4LightIndices1;
 CBUFFER_END
@@ -54,6 +55,23 @@ SAMPLER_CMP(sampler_CascadedShadowMap);
 
 TEXTURE2D(_MainTex);
 SAMPLER(sampler_MainTex);
+
+TEXTURECUBE(unity_SpecCube0);
+TEXTURECUBE(unity_SpecCube1);
+SAMPLER(samplerunity_SpecCube0);
+
+
+float3 SampleEnvironment(LitSurface s)
+{
+	float3 reflectVector = reflect(-s.viewDir, s.normal);
+	float mip = PerceptualRoughnessToMipmapLevel(s.perceptualRoughness);
+
+	float3 uvw = reflectVector;
+	float4 sample = SAMPLE_TEXTURECUBE_LOD(unity_SpecCube0, samplerunity_SpecCube0, uvw, mip);
+	float3 color = sample.rgb;
+
+	return color;
+}
 
 float DistanceToCameraSqr(float3 worldPos) {
 	float3 cameraToFragment = worldPos - _WorldSpaceCameraPos;
@@ -180,11 +198,13 @@ float3 MainLight(LitSurface s)
 }
 
 #define UNITY_MATRIX_M unity_ObjectToWorld
+#define UNITY_MATRIX_I_M unity_WorldToObject
 
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/UnityInstancing.hlsl"
 
 UNITY_INSTANCING_BUFFER_START(PerInstance)
 UNITY_DEFINE_INSTANCED_PROP(float4, _Color)
+UNITY_DEFINE_INSTANCED_PROP(float, _Metallic)
 UNITY_DEFINE_INSTANCED_PROP(float, _Smoothness)
 UNITY_INSTANCING_BUFFER_END(PerInstance)
 
@@ -210,10 +230,14 @@ VertexOutput LitPassVertex(VertexInput input) {
 	UNITY_TRANSFER_INSTANCE_ID(input, output);
 	float4 worldPos = mul(UNITY_MATRIX_M, float4(input.pos.xyz, 1.0));
 	output.clipPos = mul(unity_MatrixVP, worldPos);
+#if defined(UNITY_ASSUME_UNIFORM_SCALING)
 	output.normal = mul((float3x3)UNITY_MATRIX_M, input.normal);
+#else
+	output.normal = normalize(mul(input.normal, (float3x3)UNITY_MATRIX_I_M));
+#endif
 	output.worldPos = worldPos.xyz;
 
-	LitSurface surface = GetLitSurface(output.normal, output.worldPos, 0, 1, 0, true);
+	LitSurface surface = GetLitSurfaceVertex(output.normal, output.worldPos);
 	output.vertexLighting = 0;
 	for (int i = 4; i < min(unity_LightIndicesOffsetAndCount.y, 8); i++) {
 		int lightIndex = unity_4LightIndices1[i - 4];
@@ -238,9 +262,10 @@ float4 LitPassFragment(VertexOutput input, FRONT_FACE_TYPE frontFace : FRONT_FAC
 #endif
 
 	// light spec
-	float smothness = UNITY_ACCESS_INSTANCED_PROP(PerInstance, _Smoothness);
 	float3 viewDir = normalize(_WorldSpaceCameraPos - input.worldPos.xyz);
-	LitSurface surface = GetLitSurface(input.normal, input.worldPos, viewDir, albedo.rgb, smothness);
+	float metallic = UNITY_ACCESS_INSTANCED_PROP(PerInstance, _Metallic);
+	float smothness = UNITY_ACCESS_INSTANCED_PROP(PerInstance, _Smoothness);
+	LitSurface surface = GetLitSurface(input.normal, input.worldPos, viewDir, albedo.rgb, metallic, smothness);
 
 	float3 color = input.vertexLighting * surface.diffuse;// vertex light
 #if defined(_CASCADED_SHADOWS_HARD) || defined(_CASCADED_SHADOWS_SOFT)
@@ -251,6 +276,9 @@ float4 LitPassFragment(VertexOutput input, FRONT_FACE_TYPE frontFace : FRONT_FAC
 		float shadowAttenuation = ShadowAttenuation(lightIndex, input.worldPos);
 		color += GenericLight(lightIndex, surface, shadowAttenuation);
 	}
+
+	// spec
+	color += ReflectEnvironment(surface, SampleEnvironment(surface));
 
 	return float4(color, albedo.a);
 }

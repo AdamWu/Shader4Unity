@@ -38,13 +38,13 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0, g: 0, b: 0, a: 1}
+  m_IndirectSpecularColor: {r: 0.18261588, g: 0.22832511, b: 0.30714157, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 11
-  m_GIWorkflowMode: 1
+  m_GIWorkflowMode: 0
   m_GISettings:
     serializedVersion: 2
     m_BounceScale: 1
@@ -88,7 +88,8 @@ LightmapSettings:
     m_PVRFilteringAtrousPositionSigmaIndirect: 2
     m_PVRFilteringAtrousPositionSigmaAO: 1
     m_ShowResolutionOverlay: 1
-  m_LightingDataAsset: {fileID: 0}
+  m_LightingDataAsset: {fileID: 112000000, guid: 6fd94472ccbf8ce44819a54bac7785a8,
+    type: 2}
   m_UseShadowmask: 1
 --- !u!196 &4
 NavMeshSettings:
@@ -130,7 +131,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &3811771
 Transform:
   m_ObjectHideFlags: 0
@@ -629,7 +630,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &369906032
 Transform:
   m_ObjectHideFlags: 0
@@ -715,6 +716,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   color: {r: 0.9339623, g: 0.110137045, b: 0.110137045, a: 1}
+  metallic: 0
   smothness: 0.1
 --- !u!1 &369995597
 GameObject:
@@ -873,7 +875,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &475384980
 Transform:
   m_ObjectHideFlags: 0
@@ -959,6 +961,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   color: {r: 0.8773585, g: 0.8570465, b: 0.12829298, a: 1}
+  metallic: 0
   smothness: 0.5
 --- !u!1 &479922929
 GameObject:
@@ -1069,7 +1072,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &494583444
 Transform:
   m_ObjectHideFlags: 0
@@ -1229,7 +1232,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &589731292
 Transform:
   m_ObjectHideFlags: 0
@@ -1389,7 +1392,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &702910715
 Transform:
   m_ObjectHideFlags: 0
@@ -1820,7 +1823,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &869259952
 Transform:
   m_ObjectHideFlags: 0
@@ -1906,6 +1909,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   color: {r: 0.06808472, g: 0.9622642, b: 0.19365922, a: 1}
+  metallic: 0
   smothness: 0.5
 --- !u!1 &875215746
 GameObject:
@@ -1925,7 +1929,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &875215747
 Transform:
   m_ObjectHideFlags: 0
@@ -2085,7 +2089,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &974730854
 Transform:
   m_ObjectHideFlags: 0
@@ -2258,7 +2262,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1018042662
 Transform:
   m_ObjectHideFlags: 0
@@ -2419,7 +2423,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1152488210
 Transform:
   m_ObjectHideFlags: 0
@@ -3431,8 +3435,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f3ec10a11eafba248b6d3b9ccdcecfa2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  color: {r: 0.9245283, g: 0, b: 0.8274559, a: 1}
-  smothness: 0.5
+  color: {r: 1, g: 1, b: 1, a: 1}
+  metallic: 1
+  smothness: 0.771
 --- !u!135 &1637758112
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -3579,7 +3584,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1696931173
 Transform:
   m_ObjectHideFlags: 0
@@ -3665,7 +3670,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   color: {r: 0, g: 0.9811321, b: 0.85169613, a: 1}
-  smothness: 0.8
+  metallic: 0
+  smothness: 0.857
 --- !u!1 &1715094990
 GameObject:
   m_ObjectHideFlags: 0
@@ -3684,7 +3690,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1715094991
 Transform:
   m_ObjectHideFlags: 0

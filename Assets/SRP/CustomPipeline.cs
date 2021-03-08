@@ -127,7 +127,7 @@ public class CustomPipeline : RenderPipeline
 
         // clear
         CameraClearFlags clearFlags = camera.clearFlags;
-        cameraBuffer.ClearRenderTarget((clearFlags & CameraClearFlags.Depth) != 0, (clearFlags & CameraClearFlags.Color) != 0,camera.backgroundColor);
+        cameraBuffer.ClearRenderTarget((clearFlags & CameraClearFlags.Depth) != 0, (clearFlags & CameraClearFlags.Color) != 0, camera.backgroundColor);
 
         // light constants
         cameraBuffer.BeginSample("Render Camera");
@@ -146,6 +146,7 @@ public class CustomPipeline : RenderPipeline
         {
             drawSettings.rendererConfiguration = RendererConfiguration.PerObjectLightIndices8;
         }
+        drawSettings.rendererConfiguration |= RendererConfiguration.PerObjectReflectionProbes;
         var filterSettings = new FilterRenderersSettings(true);
         filterSettings.renderQueueRange = RenderQueueRange.opaque;
         context.DrawRenderers(cull.visibleRenderers, ref drawSettings, filterSettings);
