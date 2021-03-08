@@ -25,7 +25,7 @@ public class CustomPipeline : RenderPipeline
     static int shadowMapSizeId = Shader.PropertyToID("_ShadowMapSize");
     static int globalShadowDataId = Shader.PropertyToID("_GlobalShadowData");
     static int cascadedShaowMapId = Shader.PropertyToID("_CascadedShadowMap");
-    static int worldToShadowCacadeMatricesId = Shader.PropertyToID("_WorldToShadowCascadeMatrices");
+    static int worldToShadowCascadeMatricesId = Shader.PropertyToID("_WorldToShadowCascadeMatrices");
     static int cascadedShadowMapSizeId = Shader.PropertyToID("_CascadedShadowMapSize");
     static int cascadedShadowStrengthId = Shader.PropertyToID("_CascadedShadowStrength");
     static int cascadeCullingSpheresId = Shader.PropertyToID("_CascadeCullingSpheres");
@@ -51,7 +51,7 @@ public class CustomPipeline : RenderPipeline
     int shadowCascades;
     Vector3 shadowCascadeSplit;
     bool mainLightExists;
-    Matrix4x4[] worldToShadowCascadeMatrices = new Matrix4x4[4];
+    Matrix4x4[] worldToShadowCascadeMatrices = new Matrix4x4[5];
     Vector4[] cascadeCullingSpheres = new Vector4[4];
 
     Material errorMaterial;
@@ -71,6 +71,11 @@ public class CustomPipeline : RenderPipeline
         this.shadowDistance = shadowDistance;
         this.shadowCascades = shadowCascades;
         this.shadowCascadeSplit = shadowCascadeSplit;
+
+        if (SystemInfo.usesReversedZBuffer)
+        {
+            worldToShadowCascadeMatrices[4].m33 = 1f;
+        }
     }
 
     public override void Render(ScriptableRenderContext renderContext, Camera[] cameras)
@@ -256,7 +261,7 @@ public class CustomPipeline : RenderPipeline
         return shadow;
     }
     
-    RenderTexture SetRenderTexture()
+    RenderTexture SetShadowRenderTarget()
     {
         RenderTexture texture = RenderTexture.GetTemporary(shadowMapSize, shadowMapSize, 16, RenderTextureFormat.Shadowmap);
         texture.filterMode = FilterMode.Bilinear;
@@ -318,7 +323,7 @@ public class CustomPipeline : RenderPipeline
         Rect tileViewport = new Rect(0f, 0f, tileSize, tileSize);
 
         // shadowmap
-        shadowMap = SetRenderTexture();
+        shadowMap = SetShadowRenderTarget();
 
         shadowBuffer.BeginSample("Render Shadows");
         shadowBuffer.SetGlobalVector(globalShadowDataId, new Vector4(tileScale, shadowDistance*shadowDistance));
@@ -389,7 +394,7 @@ public class CustomPipeline : RenderPipeline
     {
         float tileSize = shadowMapSize / 2;
         // shadowmap
-        cascadedShadowMap = SetRenderTexture();
+        cascadedShadowMap = SetShadowRenderTarget();
 
         shadowBuffer.BeginSample("Render Shadows");
         context.ExecuteCommandBuffer(shadowBuffer);
@@ -431,7 +436,7 @@ public class CustomPipeline : RenderPipeline
         shadowBuffer.DisableScissorRect();
         shadowBuffer.SetGlobalTexture(cascadedShaowMapId, cascadedShadowMap);
         shadowBuffer.SetGlobalVectorArray(cascadeCullingSpheresId, cascadeCullingSpheres);
-        shadowBuffer.SetGlobalMatrixArray(worldToShadowCacadeMatricesId, worldToShadowCascadeMatrices);
+        shadowBuffer.SetGlobalMatrixArray(worldToShadowCascadeMatricesId, worldToShadowCascadeMatrices);
         float invShadowMapSize = 1f / shadowMapSize;
         shadowBuffer.SetGlobalVector(cascadedShadowMapSizeId, new Vector4(invShadowMapSize, invShadowMapSize, shadowMapSize, shadowMapSize));
         shadowBuffer.SetGlobalFloat(cascadedShadowStrengthId, shadowLight.shadowStrength);

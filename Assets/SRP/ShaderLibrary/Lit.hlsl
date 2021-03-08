@@ -29,7 +29,7 @@ CBUFFER_END
 
 CBUFFER_START(_ShadowBuffer)
 float4x4 _WorldToShadowMatrices[MAX_VISIBLE_LIGHTS];
-float4x4 _WorldToShadowCascadeMatrices[4];
+float4x4 _WorldToShadowCascadeMatrices[5];
 float4 _CascadeCullingSpheres[4];
 float4 _ShadowData[MAX_VISIBLE_LIGHTS];// x:strength y:hard or soft
 float4 _ShadowMapSize;
@@ -97,10 +97,16 @@ float InsideCascadeCullingSphere(int index, float3 worldPos)
 	float4 s = _CascadeCullingSpheres[index];
 	return dot(worldPos - s.xyz, worldPos - s.xyz) < s.w;
 }
+
 float CascadedShadowAttenuation(float3 worldPos) {
 #if !defined(_CASCADED_SHADOWS_HARD) && !defined(_CASCADED_SHADOWS_SOFT)
 	return 1.0;
 #endif
+
+	if (DistanceToCameraSqr(worldPos) > _GlobalShadowData.y) {
+		return 1.0;
+	}
+
 	float4 cascadeFlags = float4(
 		InsideCascadeCullingSphere(0, worldPos),
 		InsideCascadeCullingSphere(1, worldPos),
@@ -110,7 +116,6 @@ float CascadedShadowAttenuation(float3 worldPos) {
 	//return dot(cascadeFlags, 0.25);
 	cascadeFlags.yzw = saturate(cascadeFlags.yzw - cascadeFlags.xyz);
 	float cascadeIndex = 4 - dot(cascadeFlags, float4(4, 3, 2, 1));
-	//float cascadeIndex = 3;
 	float4 shadowPos = mul(_WorldToShadowCascadeMatrices[cascadeIndex], float4(worldPos, 1.0));
 	float attenuation;
 #if defined(_CASCADED_SHADOWS_HARD)
@@ -154,7 +159,7 @@ float3 MainLight(float3 normal, float3 worldPos)
 	float3 lightDirection = _VisibleLightDirectionsOrPositions[0].xyz;
 	float diffuse = saturate(dot(normal, lightDirection));
 	diffuse *= shadowAttenuation;
-	return diffuse * lightColor;
+	return diffuse *lightColor;
 }
 
 #define UNITY_MATRIX_M unity_ObjectToWorld
@@ -204,9 +209,9 @@ float4 LitPassFragment(VertexOutput input) : SV_TARGET{
 
 	//float3 diffuseLight = 0;
 	float3 diffuseLight = input.vertexLighting;
-//#if defined(_CASCADE_SHADOWS_HARD) || defined(_CASCADE_SHADOWS_SOFT)
+#if defined(_CASCADED_SHADOWS_HARD) || defined(_CASCADED_SHADOWS_SOFT)
 	diffuseLight += MainLight(input.normal, input.worldPos);
-//#endif
+#endif
 	for (int i = 0; i < min(unity_LightIndicesOffsetAndCount.y, 4); i++) {
 		int lightIndex = unity_4LightIndices0[i];
 		float shadowAttenuation = ShadowAttenuation(lightIndex, input.worldPos);
