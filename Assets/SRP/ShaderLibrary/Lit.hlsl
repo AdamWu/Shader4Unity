@@ -4,6 +4,11 @@
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Shadow/ShadowSamplingTent.hlsl"
 
+CBUFFER_START(UnityPerMaterial)
+float4 _MainTex_ST;
+float _Cutoff;
+CBUFFER_END
+
 CBUFFER_START(UnityPerFrame)
 float4x4 unity_MatrixVP;
 CBUFFER_END
@@ -11,6 +16,7 @@ CBUFFER_END
 CBUFFER_START(UnityPerCamera)
 float3 _WorldSpaceCameraPos;
 CBUFFER_END
+
 
 CBUFFER_START(UnityPerDraw)
 float4x4 unity_ObjectToWorld;
@@ -44,6 +50,9 @@ SAMPLER_CMP(sampler_ShadowMap);
 TEXTURE2D_SHADOW(_CascadedShadowMap);
 SAMPLER_CMP(sampler_CascadedShadowMap);
 
+TEXTURE2D(_MainTex);
+SAMPLER(sampler_MainTex);
+
 float DistanceToCameraSqr(float3 worldPos) {
 	float3 cameraToFragment = worldPos - _WorldSpaceCameraPos;
 	return dot(cameraToFragment, cameraToFragment);
@@ -71,6 +80,10 @@ float SoftShadowAttenuation(float4 shadowPos, bool cascade = false) {
 }
 
 float ShadowAttenuation(int index, float3 worldPos) {
+#if !defined(_RECEIVE_SHADOWS)
+//	return 1.0;
+#endif
+
 	if (_ShadowData[index].x <= 0 || DistanceToCameraSqr(worldPos) > _GlobalShadowData.y) {
 		return 1.0;
 	}
@@ -97,6 +110,10 @@ float InsideCascadeCullingSphere(int index, float3 worldPos)
 }
 
 float CascadedShadowAttenuation(float3 worldPos) {
+#if !defined(_RECEIVE_SHADOWS)
+	return 1.0;
+#endif
+
 #if !defined(_CASCADED_SHADOWS_HARD) && !defined(_CASCADED_SHADOWS_SOFT)
 	return 1.0;
 #endif
@@ -171,6 +188,7 @@ UNITY_INSTANCING_BUFFER_END(PerInstance)
 struct VertexInput {
 	float4 pos : POSITION;
 	float3 normal : NORMAL;
+	float2 uv : TEXCOORD0;
 	UNITY_VERTEX_INPUT_INSTANCE_ID
 };
 
@@ -179,6 +197,7 @@ struct VertexOutput {
 	float3 normal : TEXCOORD0;
 	float3 worldPos : TEXCOORD1;
 	float3 vertexLighting : TEXCOORD2;
+	float2 uv : TEXCOORD3;
 	UNITY_VERTEX_INPUT_INSTANCE_ID
 };
 
@@ -197,13 +216,21 @@ VertexOutput LitPassVertex(VertexInput input) {
 		output.vertexLighting += DiffuseLight(lightIndex, output.normal, output.worldPos, 1);
 	}
 
+	output.uv = TRANSFORM_TEX(input.uv, _MainTex);
+
 	return output;
 }
 
-float4 LitPassFragment(VertexOutput input) : SV_TARGET{
+float4 LitPassFragment(VertexOutput input, FRONT_FACE_TYPE frontFace : FRONT_FACE_SEMANTIC) : SV_TARGET{
 	UNITY_SETUP_INSTANCE_ID(input);
 	input.normal = normalize(input.normal);
-	float3 albedo = UNITY_ACCESS_INSTANCED_PROP(PerInstance, _Color).rgb;
+	input.normal = IS_FRONT_VFACE(frontFace, input.normal, -input.normal);
+	float4 albedo = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, input.uv);
+	albedo *= UNITY_ACCESS_INSTANCED_PROP(PerInstance, _Color);
+
+#if defined(_CLIPPING_ON)
+	clip(albedo.a - _Cutoff);
+#endif
 
 	//float3 diffuseLight = 0;
 	float3 diffuseLight = input.vertexLighting;
@@ -223,8 +250,8 @@ float4 LitPassFragment(VertexOutput input) : SV_TARGET{
 	}
 	*/
 
-	float3 color = diffuseLight * albedo;
-	return float4(color, 1);
+	float3 color = diffuseLight * albedo.rgb;
+	return float4(color, albedo.a);
 }
 
 #endif // MYRP_LIT_INCLUDED

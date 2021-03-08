@@ -3,6 +3,11 @@
 
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
 
+CBUFFER_START(UnityPerMaterial)
+float4 _MainTex_ST;
+float _Cutoff;
+CBUFFER_END
+
 CBUFFER_START(UnityPerFrame)
 float4x4 unity_MatrixVP;
 CBUFFER_END
@@ -15,17 +20,26 @@ CBUFFER_START(_ShadowCasterBuffer)
 float _ShadowBias;
 CBUFFER_END
 
+TEXTURE2D(_MainTex);
+SAMPLER(sampler_MainTex);
+
 #define UNITY_MATRIX_M unity_ObjectToWorld
 
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/UnityInstancing.hlsl"
 
+UNITY_INSTANCING_BUFFER_START(PerInstance)
+UNITY_DEFINE_INSTANCED_PROP(float4, _Color)
+UNITY_INSTANCING_BUFFER_END(PerInstance)
+
 struct VertexInput {
 	UNITY_VERTEX_INPUT_INSTANCE_ID
 	float4 pos : POSITION;
+	float2 uv : TEXCOORD0;
 };
 
 struct VertexOutput {
 	float4 clipPos : SV_POSITION;
+	float2 uv : TEXCOORD0;
 };
 
 VertexOutput ShadowCasterPassVertex(VertexInput input) {
@@ -40,10 +54,18 @@ VertexOutput ShadowCasterPassVertex(VertexInput input) {
 	output.clipPos.z += _ShadowBias;
 	output.clipPos.z = max(output.clipPos.z, output.clipPos.w * UNITY_NEAR_CLIP_VALUE);
 #endif
+
+	output.uv = TRANSFORM_TEX(input.uv, _MainTex);
+
 	return output;
 }
 
 float4 ShadowCasterPassFragment(VertexOutput input) : SV_TARGET {
+#if !defined(_CLIPPING_OFF)
+	float alpha = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, input.uv).a;
+	alpha *= UNITY_ACCESS_INSTANCED_PROP(PerInstance, _Color).a;
+	clip(alpha - _Cutoff);
+#endif
 	return 0;
 }
 
