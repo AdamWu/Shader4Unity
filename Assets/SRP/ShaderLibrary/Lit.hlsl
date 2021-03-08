@@ -25,6 +25,10 @@ CBUFFER_START(UnityPerDraw)
 float4x4 unity_ObjectToWorld, unity_WorldToObject;
 float4 unity_LightIndicesOffsetAndCount;
 float4 unity_4LightIndices0, unity_4LightIndices1;
+float4 unity_SpecCube0_BoxMin, unity_SpecCube0_BoxMax;
+float4 unity_SpecCube0_ProbePosition, unity_SpecCube0_HDR;
+float4 unity_SpecCube1_BoxMin, unity_SpecCube1_BoxMax;
+float4 unity_SpecCube1_ProbePosition, unity_SpecCube1_HDR;
 CBUFFER_END
 
 #define MAX_VISIBLE_LIGHTS 16
@@ -60,16 +64,33 @@ TEXTURECUBE(unity_SpecCube0);
 TEXTURECUBE(unity_SpecCube1);
 SAMPLER(samplerunity_SpecCube0);
 
+float3 BoxProjection(float3 direction, float3 position, float4 cubemapPosition, float4 boxMin, float4 boxMax)
+{
+	UNITY_BRANCH
+	if (cubemapPosition.w > 0) {
+		float3 factors = ((direction > 0 ? boxMax.xyz : boxMin.xyz) - position) / direction;
+		float scalar = min(min(factors.x, factors.y), factors.z);
+		direction = direction * scalar + (position - cubemapPosition.xyz);
+	}
+	return direction;
+}
 
 float3 SampleEnvironment(LitSurface s)
 {
 	float3 reflectVector = reflect(-s.viewDir, s.normal);
 	float mip = PerceptualRoughnessToMipmapLevel(s.perceptualRoughness);
 
-	float3 uvw = reflectVector;
+	//float3 uvw = reflectVector;
+	float3 uvw = BoxProjection(reflectVector, s.position, unity_SpecCube0_ProbePosition, unity_SpecCube0_BoxMin, unity_SpecCube0_BoxMax);
 	float4 sample = SAMPLE_TEXTURECUBE_LOD(unity_SpecCube0, samplerunity_SpecCube0, uvw, mip);
-	float3 color = sample.rgb;
+	float3 color = DecodeHDREnvironment(sample, unity_SpecCube0_HDR);
 
+	float blend = unity_SpecCube0_BoxMin.w;
+	if (blend < 0.9999) {
+		uvw = BoxProjection(reflectVector, s.position, unity_SpecCube1_ProbePosition, unity_SpecCube1_BoxMin, unity_SpecCube1_BoxMax);
+		sample = SAMPLE_TEXTURECUBE_LOD(unity_SpecCube1, samplerunity_SpecCube0, uvw, mip);
+		color = lerp(DecodeHDREnvironment(sample, unity_SpecCube1_HDR), color, blend);
+	}
 	return color;
 }
 
@@ -261,11 +282,15 @@ float4 LitPassFragment(VertexOutput input, FRONT_FACE_TYPE frontFace : FRONT_FAC
 	clip(albedo.a - _Cutoff);
 #endif
 
-	// light spec
+	// metallic roughness
 	float3 viewDir = normalize(_WorldSpaceCameraPos - input.worldPos.xyz);
 	float metallic = UNITY_ACCESS_INSTANCED_PROP(PerInstance, _Metallic);
 	float smothness = UNITY_ACCESS_INSTANCED_PROP(PerInstance, _Smoothness);
 	LitSurface surface = GetLitSurface(input.normal, input.worldPos, viewDir, albedo.rgb, metallic, smothness);
+
+#if defined(_PREMULTIPLY_ALPHA)
+	PremultiplyAlpha(surface, albedo.a);
+#endif
 
 	float3 color = input.vertexLighting * surface.diffuse;// vertex light
 #if defined(_CASCADED_SHADOWS_HARD) || defined(_CASCADED_SHADOWS_SOFT)
@@ -277,7 +302,7 @@ float4 LitPassFragment(VertexOutput input, FRONT_FACE_TYPE frontFace : FRONT_FAC
 		color += GenericLight(lightIndex, surface, shadowAttenuation);
 	}
 
-	// spec
+	// spec cube
 	color += ReflectEnvironment(surface, SampleEnvironment(surface));
 
 	return float4(color, albedo.a);
