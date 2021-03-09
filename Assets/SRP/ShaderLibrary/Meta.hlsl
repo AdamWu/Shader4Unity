@@ -14,7 +14,7 @@ float3 _WorldSpaceCameraPos;
 CBUFFER_END
 
 CBUFFER_START(UnityPerDraw)
-float4 unity_LightmapST;
+float4 unity_LightmapST, unity_DynamicLightmapST;
 CBUFFER_END
 
 CBUFFER_START(UnityPerMaterial)
@@ -27,7 +27,7 @@ CBUFFER_END
 CBUFFER_START(UnityMetaPass)
 float unity_OneOverOutputBoost;
 float unity_MaxOutputValue;
-bool4 unity_MetaFragmentControl;
+bool4 unity_MetaVertexControl, unity_MetaFragmentControl;
 CBUFFER_END
 
 TEXTURE2D(_MainTex);
@@ -38,6 +38,7 @@ struct VertexInput {
 	float3 normal : NORMAL;
 	float2 uv : TEXCOORD0;
 	float2 lightmapUV : TEXCOORD1;
+	float2 dynamicLightmapUV : TEXCOORD2;
 };
 
 struct VertexOutput {
@@ -45,10 +46,14 @@ struct VertexOutput {
 	float2 uv : TEXCOORD0;
 };
 
-
 VertexOutput MetaPassVertex(VertexInput input) {
 	VertexOutput output;
-	input.pos.xy = input.lightmapUV * unity_LightmapST.xy + unity_LightmapST.zw;
+	if (unity_MetaVertexControl.x) {
+		input.pos.xy = input.lightmapUV * unity_LightmapST.xy + unity_LightmapST.zw;
+	}
+	if (unity_MetaVertexControl.y) {
+		input.pos.xy = input.dynamicLightmapUV * unity_DynamicLightmapST.xy + unity_DynamicLightmapST.zw;
+	}
 	input.pos.z = input.pos.z > 0 ? FLT_MIN : 0.0;
 	output.clipPos = mul(unity_MatrixVP, float4(input.pos.xyz, 1.0));
 	output.uv = TRANSFORM_TEX(input.uv, _MainTex);
@@ -58,6 +63,7 @@ VertexOutput MetaPassVertex(VertexInput input) {
 float4 MetaPassFragment(VertexOutput input) : SV_TARGET{
 	float4 albedo = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, input.uv);
 	albedo *= _Color;
+
 	LitSurface surface = GetLitSurfaceMeta(albedo.rgb, _Metallic, _Smoothness);
 
 	float4 meta = 0;

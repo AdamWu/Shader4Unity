@@ -10,7 +10,7 @@ Material:
   m_Name: LitEmissionMaterial
   m_Shader: {fileID: 4800000, guid: d6ee75a827fd9ee448767b77d42ce231, type: 3}
   m_ShaderKeywords: _CLIPPING_OFF _RECEIVE_SHADOWS
-  m_LightmapFlags: 2
+  m_LightmapFlags: 1
   m_EnableInstancingVariants: 1
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: 2000

@@ -36,4 +36,14 @@ public class InstancedMaterialProperties  : MonoBehaviour {
 
         GetComponent<MeshRenderer>().SetPropertyBlock(propertyBlock);
     }
+
+    void Update()
+    {
+        Color originalEmissionColor = emissionColor;
+        emissionColor *= 0.5f + 0.5f * Mathf.Cos(2f * Mathf.PI * 0.2f * Time.time);
+        OnValidate();
+        //GetComponent<MeshRenderer>().UpdateGIMaterials();
+        DynamicGI.SetEmissive(GetComponent<MeshRenderer>(), emissionColor);
+        emissionColor = originalEmissionColor;
+    }
 }
