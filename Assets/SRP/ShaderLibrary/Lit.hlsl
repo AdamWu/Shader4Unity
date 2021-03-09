@@ -1,5 +1,5 @@
-#ifndef MYRP_LIT_INCLUDED
-#define MYRP_LIT_INCLUDED
+#ifndef LIT_INCLUDED
+#define LIT_INCLUDED
 
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Shadow/ShadowSamplingTent.hlsl"
@@ -29,6 +29,10 @@ float4 unity_SpecCube0_BoxMin, unity_SpecCube0_BoxMax;
 float4 unity_SpecCube0_ProbePosition, unity_SpecCube0_HDR;
 float4 unity_SpecCube1_BoxMin, unity_SpecCube1_BoxMax;
 float4 unity_SpecCube1_ProbePosition, unity_SpecCube1_HDR;
+float4 unity_LightmapST;
+float4 unity_SHAr, unity_SHAg, unity_SHAb;
+float4 unity_SHBr, unity_SHBg, unity_SHBb;
+float4 unity_SHC;
 CBUFFER_END
 
 #define MAX_VISIBLE_LIGHTS 16
@@ -51,6 +55,13 @@ float4 _GlobalShadowData;
 float _CascadedShadowStrength;
 CBUFFER_END
 
+CBUFFER_START(UnityProbeVolume)
+float4 unity_ProbeVolumeParams;
+float4x4 unity_ProbeVolumeWorldToObject;
+float3 unity_ProbeVolumeSizeInv;
+float3 unity_ProbeVolumeMin;
+CBUFFER_END
+
 TEXTURE2D_SHADOW(_ShadowMap);
 SAMPLER_CMP(sampler_ShadowMap);
 
@@ -63,6 +74,46 @@ SAMPLER(sampler_MainTex);
 TEXTURECUBE(unity_SpecCube0);
 TEXTURECUBE(unity_SpecCube1);
 SAMPLER(samplerunity_SpecCube0);
+
+TEXTURE2D(unity_Lightmap);
+SAMPLER(samplerunity_Lightmap);
+
+TEXTURE3D_FLOAT(unity_ProbeVolumeSH);
+SAMPLER(samplerunity_ProbeVolumeSH);
+
+float3 SampleLightmap(float2 uv){
+	return SampleSingleLightmap(TEXTURE2D_PARAM(unity_Lightmap, samplerunity_Lightmap), uv,
+		float4(1, 1, 0, 0),
+#if defined(UNITY_LIGHTMAP_FULL_HDR)
+		false,
+#else
+		true,
+#endif
+		float4(LIGHTMAP_HDR_MULTIPLIER, LIGHTMAP_HDR_MULTIPLIER, 0.0, 0.0)
+	);
+}
+// sample light probe or volume?
+float3 SampleLightProbes(LitSurface s) {
+	if (unity_ProbeVolumeParams.x) {
+		return SampleProbeVolumeSH4(
+			TEXTURE3D_PARAM(unity_ProbeVolumeSH, samplerunity_ProbeVolumeSH),
+			s.position, s.normal, unity_ProbeVolumeWorldToObject,
+			unity_ProbeVolumeParams.y, unity_ProbeVolumeParams.z,
+			unity_ProbeVolumeMin, unity_ProbeVolumeSizeInv
+		);
+	}
+	else {
+		float4 coefficients[7];
+		coefficients[0] = unity_SHAr;
+		coefficients[1] = unity_SHAg;
+		coefficients[2] = unity_SHAb;
+		coefficients[3] = unity_SHBr;
+		coefficients[4] = unity_SHBg;
+		coefficients[5] = unity_SHBb;
+		coefficients[6] = unity_SHC;
+		return max(0.0, SampleSH9(coefficients, s.normal));
+	}
+}
 
 float3 BoxProjection(float3 direction, float3 position, float4 cubemapPosition, float4 boxMin, float4 boxMax)
 {
@@ -227,22 +278,27 @@ UNITY_INSTANCING_BUFFER_START(PerInstance)
 UNITY_DEFINE_INSTANCED_PROP(float4, _Color)
 UNITY_DEFINE_INSTANCED_PROP(float, _Metallic)
 UNITY_DEFINE_INSTANCED_PROP(float, _Smoothness)
+UNITY_DEFINE_INSTANCED_PROP(float4, _EmissionColor)
 UNITY_INSTANCING_BUFFER_END(PerInstance)
 
 struct VertexInput {
+	UNITY_VERTEX_INPUT_INSTANCE_ID
 	float4 pos : POSITION;
 	float3 normal : NORMAL;
 	float2 uv : TEXCOORD0;
-	UNITY_VERTEX_INPUT_INSTANCE_ID
+	float2 lightmapUV : TEXCOORD1;
 };
 
 struct VertexOutput {
+	UNITY_VERTEX_INPUT_INSTANCE_ID
 	float4 clipPos : SV_POSITION;
 	float3 normal : TEXCOORD0;
 	float3 worldPos : TEXCOORD1;
 	float3 vertexLighting : TEXCOORD2;
 	float2 uv : TEXCOORD3;
-	UNITY_VERTEX_INPUT_INSTANCE_ID
+#if defined(LIGHTMAP_ON)
+	float2 lightmapUV : TEXCOORD4;
+#endif
 };
 
 VertexOutput LitPassVertex(VertexInput input) {
@@ -266,10 +322,20 @@ VertexOutput LitPassVertex(VertexInput input) {
 	}
 
 	output.uv = TRANSFORM_TEX(input.uv, _MainTex);
-
+#if defined(LIGHTMAP_ON)
+	output.lightmapUV = input.lightmapUV * unity_LightmapST.xy + unity_LightmapST.zw;
+#endif
 	return output;
 }
 
+float3 GlobalIllumination(VertexOutput input, LitSurface surface)
+{
+#if defined(LIGHTMAP_ON)
+	return SampleLightmap(input.lightmapUV);
+#else
+	return SampleLightProbes(surface);
+#endif
+}
 
 float4 LitPassFragment(VertexOutput input, FRONT_FACE_TYPE frontFace : FRONT_FACE_SEMANTIC) : SV_TARGET{
 	UNITY_SETUP_INSTANCE_ID(input);
@@ -304,6 +370,13 @@ float4 LitPassFragment(VertexOutput input, FRONT_FACE_TYPE frontFace : FRONT_FAC
 
 	// spec cube
 	color += ReflectEnvironment(surface, SampleEnvironment(surface));
+	
+	// lightmap
+	//color = GlobalIllumination(input, surface);
+	color += GlobalIllumination(input, surface) * surface.diffuse;
+
+	// emission
+	color += UNITY_ACCESS_INSTANCED_PROP(PerInstance, _EmissionColor);
 
 	return float4(color, albedo.a);
 }

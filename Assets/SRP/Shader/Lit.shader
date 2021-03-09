@@ -7,6 +7,7 @@
 		_Cutoff("Alpha Cutoff", Range(0, 1)) = 0.5
 		_Metallic("Metallic", Range(0, 1)) = 0
 		_Smoothness("Smoothness", Range(0, 1)) = 0.5
+		[HDR] _EmissionColor("Emission Color", Color) = (0, 0, 0, 0)
 
 		[Enum(UnityEngine.Rendering.CullMode)] _Cull("Cull", Float) = 2
 		[Enum(UnityEngine.Rendering.BlendMode)] _SrcBlend("Src Blend", Float) = 1
@@ -34,7 +35,8 @@
 			//#pragma multi_compile _ _SHADOWS_HARD
 			//#pragma multi_compile _ _SHADOWS_SOFT
 			#pragma multi_compile _ _CASCADED_SHADOWS_HARD _CASCADED_SHADOWS_SOFT
-			
+			#pragma multi_compile _ LIGHTMAP_ON
+
 			#pragma vertex LitPassVertex
 			#pragma fragment LitPassFragment
 			
@@ -50,7 +52,6 @@
 			Cull[_Cull]
 			
 			HLSLPROGRAM
-			
 			#pragma target 3.5
 			
 			#pragma multi_compile_instancing
@@ -63,6 +64,22 @@
 			
 			#include "../ShaderLibrary/ShadowCaster.hlsl"
 			
+			ENDHLSL
+		}
+
+		Pass {
+			Tags {
+				"LightMode" = "Meta"
+			}
+			Cull Off
+			HLSLPROGRAM
+			#pragma target 3.5
+
+			#pragma vertex MetaPassVertex
+			#pragma fragment MetaPassFragment
+
+			#include "../ShaderLibrary/Meta.hlsl"
+
 			ENDHLSL
 		}
 	}

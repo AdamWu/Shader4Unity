@@ -147,6 +147,9 @@ public class CustomPipeline : RenderPipeline
             drawSettings.rendererConfiguration = RendererConfiguration.PerObjectLightIndices8;
         }
         drawSettings.rendererConfiguration |= RendererConfiguration.PerObjectReflectionProbes;
+        drawSettings.rendererConfiguration |= RendererConfiguration.PerObjectLightmaps;
+        drawSettings.rendererConfiguration |= RendererConfiguration.PerObjectLightProbe;
+        drawSettings.rendererConfiguration |= RendererConfiguration.PerObjectLightProbeProxyVolume;
         var filterSettings = new FilterRenderersSettings(true);
         filterSettings.renderQueueRange = RenderQueueRange.opaque;
         context.DrawRenderers(cull.visibleRenderers, ref drawSettings, filterSettings);
