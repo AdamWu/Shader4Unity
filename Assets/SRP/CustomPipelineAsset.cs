@@ -44,5 +44,13 @@ public class CustomPipelineAsset : RenderPipelineAsset
         Vector3 shadowCascadeSplit = shadowCascades == ShadowCascades.Four ? fourCascadesSplit : new Vector3(twoCascadesSplit, 0);
         return new CustomPipeline(dynamicBatching, instancing, (int)shadowMapSize, shadowDistance, shadowFadeRange, (int)shadowCascades, shadowCascadeSplit);
     }
+
+    public bool HasShadowCascades
+    {
+        get
+        {
+            return shadowCascades != ShadowCascades.Zero;
+        }
+    }
 }
 

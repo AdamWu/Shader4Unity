@@ -53,10 +53,10 @@ struct v2f
 	float3 vertexLightColor : TEXCOORD6;
 #endif
 #if defined(LIGHTMAP_ON)
-	float2 lightmapUV : TEXCOORD6;
+	float2 lightmapUV : TEXCOORD7;
 #endif
 #if defined(DYNAMICLIGHTMAP_ON)
-	float2 dynamicLightmapUV : TEXCOORD7;
+	float2 dynamicLightmapUV : TEXCOORD8;
 #endif
 
 #if defined (CUSTOM_GEOMETRY_INTERPOLATORS)
