@@ -59,6 +59,8 @@ public class CustomPipeline : RenderPipeline
     const string shadowsSoftKeyword = "_SHADOWS_SOFT";
     const string cascadedShadowsHardKeyword = "_CASCADED_SHADOWS_HARD";
     const string cascadedShadowsSoftKeyword = "_CASCADED_SHADOWS_SOFT";
+    const string shadowmaskKeyword = "_SHADOWMASK";
+    const string distanceShadowmaskKeyword = "_DISTANCE_SHADOWMASK";
     static int shadowMapId = Shader.PropertyToID("_ShadowMap");
     static int worldToShadowMatricesId = Shader.PropertyToID("_WorldToShadowMatrices");
     static int shadowBiasId = Shader.PropertyToID("_ShadowBias");
@@ -70,6 +72,8 @@ public class CustomPipeline : RenderPipeline
     static int cascadedShadowMapSizeId = Shader.PropertyToID("_CascadedShadowMapSize");
     static int cascadedShadowStrengthId = Shader.PropertyToID("_CascadedShadowStrength");
     static int cascadeCullingSpheresId = Shader.PropertyToID("_CascadeCullingSpheres");
+    // shadow mask
+    static int visibleLightOcclusionMasksId = Shader.PropertyToID("_VisibleLightOcclusionMasks");
 
     CommandBuffer cameraBuffer = new CommandBuffer { name = "Render Camera" };
     CommandBuffer shadowBuffer = new CommandBuffer { name = "Render Shadows" };
@@ -95,6 +99,15 @@ public class CustomPipeline : RenderPipeline
     Matrix4x4[] worldToShadowCascadeMatrices = new Matrix4x4[5];
     Vector4[] cascadeCullingSpheres = new Vector4[4];
     Vector4 globalShadowData;
+    Vector4[] visibleLightOcclusionMasks = new Vector4[maxVisibleLights];
+    Vector4[] occlusionMasks =
+    {
+        new Vector4(-1f, 0, 0, 0),
+        new Vector4(1f, 0, 0, 0),
+        new Vector4(0, 1f, 0, 0),
+        new Vector4(0, 0, 1f, 0),
+        new Vector4(0, 0, 0, 1f),
+    };
 
     Material errorMaterial;
     
@@ -192,6 +205,7 @@ public class CustomPipeline : RenderPipeline
         cameraBuffer.SetGlobalVectorArray(visibleLightDirectionsOrPositionsId, visibleLightDirectionsOrPositions);
         cameraBuffer.SetGlobalVectorArray(visibleLightAttenuationsId, visibleLightAttenuations);
         cameraBuffer.SetGlobalVectorArray(visibleLightSpotDirectionsId, visibleLightSpotDirections);
+        cameraBuffer.SetGlobalVectorArray(visibleLightOcclusionMasksId, visibleLightOcclusionMasks);
         globalShadowData.z = 1f - cullingParameters.shadowDistance * globalShadowData.y;
         cameraBuffer.SetGlobalVector(globalShadowDataId, globalShadowData);
         context.ExecuteCommandBuffer(cameraBuffer);
@@ -209,6 +223,9 @@ public class CustomPipeline : RenderPipeline
         drawSettings.rendererConfiguration |= RendererConfiguration.PerObjectLightmaps;
         drawSettings.rendererConfiguration |= RendererConfiguration.PerObjectLightProbe;
         drawSettings.rendererConfiguration |= RendererConfiguration.PerObjectLightProbeProxyVolume;
+        drawSettings.rendererConfiguration |= RendererConfiguration.PerObjectShadowMask; // shadow for static
+        drawSettings.rendererConfiguration |= RendererConfiguration.PerObjectOcclusionProbe; // shadow for dynamic
+        drawSettings.rendererConfiguration |= RendererConfiguration.PerObjectOcclusionProbeProxyVolume; // shadow for dynamic
         var filterSettings = new FilterRenderersSettings(true);
         filterSettings.renderQueueRange = RenderQueueRange.opaque;
         context.DrawRenderers(cull.visibleRenderers, ref drawSettings, filterSettings);
@@ -247,6 +264,7 @@ public class CustomPipeline : RenderPipeline
     {
         mainLightExists = false;
         shadowTileCount = 0;
+        bool shadowmaskExists = false;
         for (int i = 0; i < cull.visibleLights.Count; i++)
         {
             if (i == maxVisibleLights) break;
@@ -256,6 +274,14 @@ public class CustomPipeline : RenderPipeline
             Vector4 attenuation = Vector4.zero;
             attenuation.w = 1f;
             Vector4 shadow = Vector4.zero;
+
+            // shadowmask ?
+            LightBakingOutput baking = light.light.bakingOutput;
+            visibleLightOcclusionMasks[i] = occlusionMasks[baking.occlusionMaskChannel + 1];
+            if (baking.lightmapBakeType == LightmapBakeType.Mixed)
+            {
+                shadowmaskExists |= baking.mixedLightingMode == MixedLightingMode.Shadowmask;
+            }
 
             if (light.lightType == LightType.Directional)
             {
@@ -298,6 +324,11 @@ public class CustomPipeline : RenderPipeline
             visibleLightAttenuations[i] = attenuation;
             shadowData[i] = shadow;
         }
+
+        // shadowmask
+        bool useDistanceShadowmask = QualitySettings.shadowmaskMode == ShadowmaskMode.DistanceShadowmask;
+        CoreUtils.SetKeyword(cameraBuffer, shadowmaskKeyword, shadowmaskExists && !useDistanceShadowmask);
+        CoreUtils.SetKeyword(cameraBuffer, distanceShadowmaskKeyword, shadowmaskExists && useDistanceShadowmask);
 
         if (mainLightExists || cull.visibleLights.Count > maxVisibleLights)
         {

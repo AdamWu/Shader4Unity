@@ -15,7 +15,8 @@ MonoBehaviour:
   dynamicBatching: 0
   instancing: 1
   shadowMapSize: 4096
-  shadowDistance: 100
+  shadowDistance: 20
+  shadowFadeRange: 1
   shadowCascades: 4
   twoCascadesSplit: 0.25
   fourCascadesSplit: {x: 0.20555422, y: 0.44397587, z: 0.7170001}
