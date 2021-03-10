@@ -318,6 +318,9 @@ public class CustomPipeline : RenderPipeline
                     attenuation.z = 1f / angleRange;
                     attenuation.w = -outerCos * attenuation.z;
                     shadow = ConfigureShadows(i, light.light);
+                } else
+                {
+                    visibleLightSpotDirections[i] = Vector4.one;
                 }
             }
 

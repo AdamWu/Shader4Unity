@@ -183,7 +183,10 @@ float MixRealtimeAndBakedShadowAttenuation(float realtime, float4 bakedShadows, 
 		return min(fadedRealtime, baked);
 	}
 #elif defined(_DISTANCE_SHADOWMASK)
-	if (hasBakedShadow) {
+	if (hasBakedShadows) {
+		if (_VisibleLightSpotDirections[lightIndex].w > 0.0) { // is point light
+			return baked;
+		}
 		return lerp(realtime, baked, t);
 	}
 #endif
