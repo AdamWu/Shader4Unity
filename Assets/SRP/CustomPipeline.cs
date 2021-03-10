@@ -1,10 +1,51 @@
+using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Experimental.Rendering;
+using UnityEngine.Experimental.GlobalIllumination;
+using LightType = UnityEngine.LightType;
 using Conditional = System.Diagnostics.ConditionalAttribute;
 
 public class CustomPipeline : RenderPipeline
 {
+#if UNITY_EDITOR
+    static Lightmapping.RequestLightsDelegate lightmappingLightsDelegate = (Light[] inputLights, NativeArray<LightDataGI> outputLights) => {
+        LightDataGI lightData = new LightDataGI();
+        for (int i = 0; i < inputLights.Length; i ++)
+        {
+            Light light = inputLights[i];
+            switch (light.type)
+            {
+                case LightType.Directional:
+                    var directionalLight = new DirectionalLight();
+                    LightmapperUtils.Extract(light, ref directionalLight);
+                    lightData.Init(ref directionalLight);
+                    break;
+                case LightType.Point:
+                    var pointLight = new PointLight();
+                    LightmapperUtils.Extract(light, ref pointLight);
+                    lightData.Init(ref pointLight);
+                    break;
+                case LightType.Spot:
+                    var spotLight = new SpotLight();
+                    LightmapperUtils.Extract(light, ref spotLight);
+                    lightData.Init(ref spotLight);
+                    break;
+                case LightType.Area:
+                    var rectangleLight = new RectangleLight();
+                    LightmapperUtils.Extract(light, ref rectangleLight);
+                    lightData.Init(ref rectangleLight);
+                    break;
+                default:
+                    lightData.InitNoBake(light.GetInstanceID());
+                    break;
+            }
+            lightData.falloff = FalloffType.InverseSquared;
+            outputLights[i] = lightData;
+        }
+    };
+#endif
+
     // light
     const int maxVisibleLights = 16;
     static int visibleLightColorsId = Shader.PropertyToID("_VisibleLightColors");
@@ -47,16 +88,17 @@ public class CustomPipeline : RenderPipeline
     Matrix4x4[] worldToShadowMatrices = new Matrix4x4[maxVisibleLights];
     int shadowMapSize;
     int shadowTileCount;
-    float shadowDistance;
+    float shadowDistance, shadowFadeRange;
     int shadowCascades;
     Vector3 shadowCascadeSplit;
     bool mainLightExists;
     Matrix4x4[] worldToShadowCascadeMatrices = new Matrix4x4[5];
     Vector4[] cascadeCullingSpheres = new Vector4[4];
+    Vector4 globalShadowData;
 
     Material errorMaterial;
     
-    public CustomPipeline(bool dynamicBatching, bool instancing, int shadowMapSize, float shadowDistance, int shadowCascades, Vector3 shadowCascadeSplit)
+    public CustomPipeline(bool dynamicBatching, bool instancing, int shadowMapSize, float shadowDistance, float shadowFadeRange, int shadowCascades, Vector3 shadowCascadeSplit)
     {
         GraphicsSettings.lightsUseLinearIntensity = true;
         if (dynamicBatching)
@@ -69,13 +111,28 @@ public class CustomPipeline : RenderPipeline
         }
         this.shadowMapSize = shadowMapSize;
         this.shadowDistance = shadowDistance;
+        this.shadowFadeRange = shadowFadeRange;
         this.shadowCascades = shadowCascades;
         this.shadowCascadeSplit = shadowCascadeSplit;
+
+        globalShadowData.y = 1f / shadowFadeRange;
 
         if (SystemInfo.usesReversedZBuffer)
         {
             worldToShadowCascadeMatrices[4].m33 = 1f;
         }
+
+#if UNITY_EDITOR
+        Lightmapping.SetDelegate(lightmappingLightsDelegate);
+#endif
+    }
+
+    public override void Dispose()
+    {
+        base.Dispose();
+#if UNITY_EDITOR
+        Lightmapping.ResetDelegate();
+#endif
     }
 
     public override void Render(ScriptableRenderContext renderContext, Camera[] cameras)
@@ -129,12 +186,14 @@ public class CustomPipeline : RenderPipeline
         CameraClearFlags clearFlags = camera.clearFlags;
         cameraBuffer.ClearRenderTarget((clearFlags & CameraClearFlags.Depth) != 0, (clearFlags & CameraClearFlags.Color) != 0, camera.backgroundColor);
 
-        // light constants
+        // global constants
         cameraBuffer.BeginSample("Render Camera");
         cameraBuffer.SetGlobalVectorArray(visibleLightColorsId, visibleLightColors);
         cameraBuffer.SetGlobalVectorArray(visibleLightDirectionsOrPositionsId, visibleLightDirectionsOrPositions);
         cameraBuffer.SetGlobalVectorArray(visibleLightAttenuationsId, visibleLightAttenuations);
         cameraBuffer.SetGlobalVectorArray(visibleLightSpotDirectionsId, visibleLightSpotDirections);
+        globalShadowData.z = 1f - cullingParameters.shadowDistance * globalShadowData.y;
+        cameraBuffer.SetGlobalVector(globalShadowDataId, globalShadowData);
         context.ExecuteCommandBuffer(cameraBuffer);
         cameraBuffer.Clear();
 
@@ -333,7 +392,8 @@ public class CustomPipeline : RenderPipeline
         shadowMap = SetShadowRenderTarget();
 
         shadowBuffer.BeginSample("Render Shadows");
-        shadowBuffer.SetGlobalVector(globalShadowDataId, new Vector4(tileScale, shadowDistance*shadowDistance));
+        globalShadowData.x = tileScale;
+        //shadowBuffer.SetGlobalVector(globalShadowDataId, new Vector4(tileScale, shadowDistance*shadowDistance));
         context.ExecuteCommandBuffer(shadowBuffer);
         shadowBuffer.Clear();
 
@@ -404,7 +464,7 @@ public class CustomPipeline : RenderPipeline
         cascadedShadowMap = SetShadowRenderTarget();
 
         shadowBuffer.BeginSample("Render Shadows");
-        shadowBuffer.SetGlobalVector(globalShadowDataId, new Vector4(0, shadowDistance * shadowDistance));
+        //shadowBuffer.SetGlobalVector(globalShadowDataId, new Vector4(0, shadowDistance * shadowDistance));
         context.ExecuteCommandBuffer(shadowBuffer);
         shadowBuffer.Clear();
 
