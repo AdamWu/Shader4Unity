@@ -12,5 +12,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3380069b7024c62438fb391c8d318053, type: 3}
   m_Name: New Custom Post Processing Stack
   m_EditorClassIdentifier: 
-  blurStrength: 0
-  depthStripes: 0
+  blurStrength: 2
+  depthStripes: 1
