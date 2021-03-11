@@ -287,7 +287,7 @@ float3 GenericLight(int index, LitSurface s, float shadowAttenuation) {
 
 	float3 lightVector = lightPositionOrDirection.xyz - s.position * lightPositionOrDirection.w;
 	float3 lightDirection = normalize(lightVector);
-	float color = LightSurface(s, lightDirection);
+	float3 color = LightSurface(s, lightDirection);
 
 	// attenuation
 	float rangeFade = dot(lightVector, lightVector) * lightAttenuation.x;
@@ -331,16 +331,15 @@ UNITY_DEFINE_INSTANCED_PROP(float4, _EmissionColor)
 UNITY_INSTANCING_BUFFER_END(PerInstance)
 
 struct VertexInput {
-	UNITY_VERTEX_INPUT_INSTANCE_ID
 	float4 pos : POSITION;
 	float3 normal : NORMAL;
 	float2 uv : TEXCOORD0;
 	float2 lightmapUV : TEXCOORD1;
 	float2 dynamicLightmapUV : TEXCOORD2;
+	UNITY_VERTEX_INPUT_INSTANCE_ID
 };
 
 struct VertexOutput {
-	UNITY_VERTEX_INPUT_INSTANCE_ID
 	float4 clipPos : SV_POSITION;
 	float3 normal : TEXCOORD0;
 	float3 worldPos : TEXCOORD1;
@@ -352,6 +351,7 @@ struct VertexOutput {
 #if defined(DYNAMICLIGHTMAP_ON)
 	float2 dynamicLightmapUV : TEXCOORD5;
 #endif
+	UNITY_VERTEX_INPUT_INSTANCE_ID
 };
 
 VertexOutput LitPassVertex(VertexInput input) {

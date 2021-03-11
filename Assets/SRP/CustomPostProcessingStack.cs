@@ -5,7 +5,10 @@ using UnityEngine.Rendering;
 public class CustomPostProcessingStack : ScriptableObject
 {
     [SerializeField, Range(0, 10)]
-    int blurStrength;
+    int blurStrength = 0;
+    [SerializeField]
+    bool depthStripes = false;
+
 
     static int mainTexId = Shader.PropertyToID("_MainTex");
     static int tempTexId = Shader.PropertyToID("_PostProcessingStackTempTex");
@@ -54,7 +57,10 @@ public class CustomPostProcessingStack : ScriptableObject
     public void RenderAfterOpaque(CommandBuffer cb, int cameraColorId, int cameraDepthId, int width, int height)
     {
         InitializeStatic();
-        DepthStrips(cb, cameraColorId, cameraDepthId, width, height);
+        if (depthStripes)
+        {
+            DepthStrips(cb, cameraColorId, cameraDepthId, width, height);
+        }
     }
 
     public void RenderAfterTransparent(CommandBuffer cb, int cameraColorId, int cameraDepthId, int width, int height)

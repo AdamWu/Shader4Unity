@@ -13,3 +13,4 @@ MonoBehaviour:
   m_Name: New Custom Post Processing Stack
   m_EditorClassIdentifier: 
   blurStrength: 0
+  depthStripes: 0
