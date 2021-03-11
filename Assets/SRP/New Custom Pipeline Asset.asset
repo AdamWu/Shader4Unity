@@ -14,9 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   dynamicBatching: 0
   instancing: 1
+  defaultStack: {fileID: 11400000, guid: d478fcbc114db3d4d8ee84e6dbc6657d, type: 2}
   shadowMapSize: 4096
   shadowDistance: 20
   shadowFadeRange: 1
-  shadowCascades: 0
+  shadowCascades: 4
   twoCascadesSplit: 0.25
   fourCascadesSplit: {x: 0.20555422, y: 0.44397587, z: 0.7170001}

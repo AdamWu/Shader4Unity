@@ -75,8 +75,13 @@ public class CustomPipeline : RenderPipeline
     // shadow mask
     static int visibleLightOcclusionMasksId = Shader.PropertyToID("_VisibleLightOcclusionMasks");
 
+    // post processing
+    static int cameraColorTextureId = Shader.PropertyToID("_CameraColorTexture");
+    static int cameraDepthTextureId = Shader.PropertyToID("_CameraDepthTexture");
+
     CommandBuffer cameraBuffer = new CommandBuffer { name = "Render Camera" };
     CommandBuffer shadowBuffer = new CommandBuffer { name = "Render Shadows" };
+    CommandBuffer postProcessingBuffer = new CommandBuffer { name = "Post Processing" };
     DrawRendererFlags drawFlags;
     CullResults cull;
 
@@ -110,8 +115,10 @@ public class CustomPipeline : RenderPipeline
     };
 
     Material errorMaterial;
-    
-    public CustomPipeline(bool dynamicBatching, bool instancing, int shadowMapSize, float shadowDistance, float shadowFadeRange, int shadowCascades, Vector3 shadowCascadeSplit)
+
+    CustomPostProcessingStack defaultStack;
+
+    public CustomPipeline(bool dynamicBatching, bool instancing, CustomPostProcessingStack defaultStack, int shadowMapSize, float shadowDistance, float shadowFadeRange, int shadowCascades, Vector3 shadowCascadeSplit)
     {
         GraphicsSettings.lightsUseLinearIntensity = true;
         if (dynamicBatching)
@@ -122,6 +129,7 @@ public class CustomPipeline : RenderPipeline
         {
             drawFlags |= DrawRendererFlags.EnableInstancing;
         }
+        this.defaultStack = defaultStack;
         this.shadowMapSize = shadowMapSize;
         this.shadowDistance = shadowDistance;
         this.shadowFadeRange = shadowFadeRange;
@@ -195,6 +203,16 @@ public class CustomPipeline : RenderPipeline
         // camera setup
         context.SetupCameraProperties(camera);
 
+        // post-processing
+        if (defaultStack)
+        {
+            cameraBuffer.GetTemporaryRT(cameraColorTextureId, camera.pixelWidth, camera.pixelHeight, 0);
+            cameraBuffer.GetTemporaryRT(cameraDepthTextureId, camera.pixelWidth, camera.pixelHeight, 24, FilterMode.Bilinear, RenderTextureFormat.Depth);
+            cameraBuffer.SetRenderTarget(
+                cameraColorTextureId, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store,
+                cameraDepthTextureId, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
+        }
+
         // clear
         CameraClearFlags clearFlags = camera.clearFlags;
         cameraBuffer.ClearRenderTarget((clearFlags & CameraClearFlags.Depth) != 0, (clearFlags & CameraClearFlags.Color) != 0, camera.backgroundColor);
@@ -233,12 +251,35 @@ public class CustomPipeline : RenderPipeline
         // render skybox
         context.DrawSkybox(camera);
 
+        // post-processing
+        if (defaultStack)
+        {
+            defaultStack.RenderAfterOpaque(postProcessingBuffer, cameraColorTextureId, cameraDepthTextureId, camera.pixelWidth, camera.pixelHeight);
+            context.ExecuteCommandBuffer(postProcessingBuffer);
+            postProcessingBuffer.Clear();
+            cameraBuffer.SetRenderTarget(
+                cameraColorTextureId, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store,
+                cameraDepthTextureId, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
+            context.ExecuteCommandBuffer(cameraBuffer);
+            cameraBuffer.Clear();
+        }
+
         // render mesh transparent
         drawSettings.sorting.flags = SortFlags.CommonTransparent;
         filterSettings.renderQueueRange = RenderQueueRange.transparent;
         context.DrawRenderers(cull.visibleRenderers, ref drawSettings, filterSettings);
 
         //DrawDefaultPipeline(context, camera);
+
+        // post-processing
+        if (defaultStack)
+        {
+            defaultStack.RenderAfterTransparent(postProcessingBuffer, cameraColorTextureId, cameraDepthTextureId, camera.pixelWidth, camera.pixelHeight);
+            context.ExecuteCommandBuffer(postProcessingBuffer);
+            postProcessingBuffer.Clear();
+            cameraBuffer.ReleaseTemporaryRT(cameraColorTextureId);
+            cameraBuffer.ReleaseTemporaryRT(cameraDepthTextureId);
+        }
 
         cameraBuffer.EndSample("Render Camera");
         context.ExecuteCommandBuffer(cameraBuffer);
