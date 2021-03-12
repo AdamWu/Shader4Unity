@@ -8,6 +8,10 @@ public class CustomPostProcessingStack : ScriptableObject
     int blurStrength = 0;
     [SerializeField]
     bool depthStripes = false;
+    [SerializeField]
+    bool toneMapping = false;
+    [SerializeField, Range(1f, 100f)]
+    float toneMappingRange = 100f;
 
     public bool NeedsDepth
     {
@@ -22,7 +26,7 @@ public class CustomPostProcessingStack : ScriptableObject
     static int depthTexId = Shader.PropertyToID("_DepthTex");
     static int resolvedTexId = Shader.PropertyToID("_PostProcessingStackResolvedTex");
 
-    enum Pass { Copy, Blur, DepthStrips };
+    enum Pass { Copy, Blur, DepthStrips, ToneMapping };
 
     static Mesh fullScreenTriangle;
     static Material material;
@@ -62,37 +66,48 @@ public class CustomPostProcessingStack : ScriptableObject
         //DepthStrips(cb, cameraColorId, cameraDepthId, width, height);
     }
 
-    public void RenderAfterOpaque(CommandBuffer cb, int cameraColorId, int cameraDepthId, int width, int height, int samples)
+    public void RenderAfterOpaque(CommandBuffer cb, int cameraColorId, int cameraDepthId, int width, int height, int samples, RenderTextureFormat format)
     {
         InitializeStatic();
         if (depthStripes)
         {
-            DepthStrips(cb, cameraColorId, cameraDepthId, width, height);
+            DepthStrips(cb, cameraColorId, cameraDepthId, width, height, format);
         }
     }
 
-    public void RenderAfterTransparent(CommandBuffer cb, int cameraColorId, int cameraDepthId, int width, int height, int samples)
+    public void RenderAfterTransparent(CommandBuffer cb, int cameraColorId, int cameraDepthId, int width, int height, int samples, RenderTextureFormat format)
     {
         if(blurStrength > 0)
         {
-            if (samples > 1)
+            if (toneMapping || samples > 1)
             {
-                // avoid drawcalls
+                // solved texture
                 cb.GetTemporaryRT(resolvedTexId, width, height, 0, FilterMode.Bilinear);
-                Blit(cb, cameraColorId, resolvedTexId);
+                if (toneMapping)
+                {
+                    ToneMapping(cb, cameraColorId, resolvedTexId);
+                } else
+                {
+                    Blit(cb, cameraColorId, resolvedTexId);
+                }
                 Blur(cb, resolvedTexId, width, height);
                 cb.ReleaseTemporaryRT(resolvedTexId);
             } else
             {
                 Blur(cb, cameraColorId, width, height);
             }
-        } else
+        }
+        else if (toneMapping)
+        {
+            ToneMapping(cb, cameraColorId, BuiltinRenderTextureType.CameraTarget);
+        }
+        else
         {
             Blit(cb, cameraColorId, BuiltinRenderTextureType.CameraTarget);
         }
     }
 
-
+    // blur effect
     void Blur(CommandBuffer cb, int cameraColorId, int width, int height)
     {
         cb.BeginSample("Blur");
@@ -115,11 +130,12 @@ public class CustomPostProcessingStack : ScriptableObject
         cb.EndSample("Blur");
     }
 
-    void DepthStrips(CommandBuffer cb, int cameraColorId, int cameraDepthId, int width, int height)
+    // depth strips effect
+    void DepthStrips(CommandBuffer cb, int cameraColorId, int cameraDepthId, int width, int height, RenderTextureFormat format)
     {
         cb.BeginSample("Depth Strips");
 
-        cb.GetTemporaryRT(tempTexId, width, height);
+        cb.GetTemporaryRT(tempTexId, width, height, 0, FilterMode.Point, format);
         cb.SetGlobalTexture(depthTexId, cameraDepthId);
         Blit(cb, cameraColorId, tempTexId, Pass.DepthStrips);
         //Blit(cb, tempTexId, BuiltinRenderTextureType.CameraTarget);
@@ -127,5 +143,19 @@ public class CustomPostProcessingStack : ScriptableObject
 
         cb.ReleaseTemporaryRT(tempTexId);
         cb.EndSample("Depth Strips");
+    }
+
+
+    // tonemapping effect
+    void ToneMapping(CommandBuffer cb, RenderTargetIdentifier sourceId, RenderTargetIdentifier destinationId)
+    {
+        cb.BeginSample("Tone Mapping");
+
+        cb.SetGlobalFloat("_ReinhardModifier", 1f / (toneMappingRange * toneMappingRange));
+  
+        Blit(cb, sourceId, destinationId, Pass.ToneMapping);
+
+        cb.ReleaseTemporaryRT(tempTexId);
+        cb.EndSample("Tone Mapping");
     }
 }

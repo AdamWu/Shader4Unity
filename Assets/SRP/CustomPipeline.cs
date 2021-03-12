@@ -119,10 +119,11 @@ public class CustomPipeline : RenderPipeline
     CustomPostProcessingStack defaultStack;
     float renderScale = 1;
     int msaaSamples = 1;
+    bool allowHDR;
 
     public CustomPipeline(bool dynamicBatching, bool instancing, CustomPostProcessingStack defaultStack, 
         int shadowMapSize, float shadowDistance, float shadowFadeRange, int shadowCascades, Vector3 shadowCascadeSplit,
-        float renderScale, int msaaSamples)
+        float renderScale, int msaaSamples, bool allowHDR)
     {
         GraphicsSettings.lightsUseLinearIntensity = true;
         if (dynamicBatching)
@@ -143,6 +144,8 @@ public class CustomPipeline : RenderPipeline
         this.renderScale = renderScale;
         QualitySettings.antiAliasing = msaaSamples;
         this.msaaSamples = Mathf.Max(QualitySettings.antiAliasing, 1);
+
+        this.allowHDR = allowHDR;
 
         globalShadowData.y = 1f / shadowFadeRange;
 
@@ -227,10 +230,11 @@ public class CustomPipeline : RenderPipeline
         bool needsDepth = activeStack && activeStack.NeedsDepth;
         bool needsDirectDepth = needsDepth && renderSamples == 1; // post && no msaa
         bool needsDepthOnlyPass = needsDepth && renderSamples > 1; // post && msaa
+        RenderTextureFormat format = allowHDR && camera.allowHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default;
         if (renderToTexture)
         {
             cameraBuffer.GetTemporaryRT(cameraColorTextureId, renderWidth, renderHeight, needsDirectDepth?0:24, FilterMode.Bilinear,
-                RenderTextureFormat.Default,RenderTextureReadWrite.Default, renderSamples);
+                format, RenderTextureReadWrite.Default, renderSamples);
             if (needsDepth)
             {
                 cameraBuffer.GetTemporaryRT(cameraDepthTextureId, renderWidth, renderHeight, 24, FilterMode.Point,
@@ -301,7 +305,7 @@ public class CustomPipeline : RenderPipeline
                 cameraBuffer.Clear();
                 context.DrawRenderers(cull.visibleRenderers, ref drawSettings, filterSettings);
             }
-            activeStack.RenderAfterOpaque(postProcessingBuffer, cameraColorTextureId, cameraDepthTextureId, renderWidth, renderHeight, msaaSamples);
+            activeStack.RenderAfterOpaque(postProcessingBuffer, cameraColorTextureId, cameraDepthTextureId, renderWidth, renderHeight, msaaSamples, format);
             context.ExecuteCommandBuffer(postProcessingBuffer);
             postProcessingBuffer.Clear();
 
@@ -331,7 +335,7 @@ public class CustomPipeline : RenderPipeline
         {
             if (activeStack)
             {
-                activeStack.RenderAfterTransparent(postProcessingBuffer, cameraColorTextureId, cameraDepthTextureId, renderWidth, renderHeight, msaaSamples);
+                activeStack.RenderAfterTransparent(postProcessingBuffer, cameraColorTextureId, cameraDepthTextureId, renderWidth, renderHeight, msaaSamples, format);
                 context.ExecuteCommandBuffer(postProcessingBuffer);
                 postProcessingBuffer.Clear();
             }

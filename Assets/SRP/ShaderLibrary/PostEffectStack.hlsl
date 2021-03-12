@@ -3,11 +3,16 @@
 
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
 
+float4 _ProjectionParams;
+float4 _ZBufferParams;
+
 TEXTURE2D(_MainTex);
 SAMPLER(sampler_MainTex);
 
 TEXTURE2D(_DepthTex);
 SAMPLER(sampler_DepthTex);
+
+float _ReinhardModifier;
 
 struct VertexInput {
 	float4 pos : POSITION;
@@ -17,9 +22,6 @@ struct VertexOutput {
 	float4 clipPos : SV_POSITION;
 	float2 uv : TEXCOORD0;
 };
-
-float4 _ProjectionParams;
-float4 _ZBufferParams;
 
 VertexOutput DefaultPassVertex (VertexInput input) {
 	VertexOutput output;
@@ -63,6 +65,12 @@ float4 DepthStripsPassFragment(VertexOutput input) : SV_TARGET{
 		color = color * pow(sin(3.14*depth), 2.0);
 	}
 	return color;
+}
+
+float4 ToneMappingPassFragment(VertexOutput input) : SV_TARGET{
+	float3 color = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, input.uv);
+	color *= (1+color* _ReinhardModifier) / (1+color);
+	return float4(saturate(color), 1);
 }
 
 #endif

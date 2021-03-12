@@ -30,9 +30,9 @@ public class CustomPipelineAsset : RenderPipelineAsset
     }
 
     [SerializeField]
-    bool dynamicBatching;
+    bool dynamicBatching = false;
     [SerializeField]
-    bool instancing;
+    bool instancing = false;
 
     [SerializeField]
     CustomPostProcessingStack defaultStack;
@@ -54,13 +54,15 @@ public class CustomPipelineAsset : RenderPipelineAsset
     float renderScale = 1f;
     [SerializeField]
     MSAAMode MSAA = MSAAMode.Off;
+    [SerializeField]
+    bool allowHDR;
 
     protected override IRenderPipeline InternalCreatePipeline()
     {
         Vector3 shadowCascadeSplit = shadowCascades == ShadowCascades.Four ? fourCascadesSplit : new Vector3(twoCascadesSplit, 0);
         return new CustomPipeline(dynamicBatching, instancing, defaultStack,
             (int)shadowMapSize, shadowDistance, shadowFadeRange, (int)shadowCascades, shadowCascadeSplit,
-            renderScale, (int)MSAA);
+            renderScale, (int)MSAA, allowHDR);
     }
 
     public bool HasShadowCascades

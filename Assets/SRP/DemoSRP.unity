@@ -3227,7 +3227,7 @@ Camera:
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
   m_TargetEye: 3
-  m_HDR: 1
+  m_HDR: 0
   m_AllowMSAA: 1
   m_AllowDynamicResolution: 0
   m_ForceIntoRT: 0
@@ -7506,7 +7506,7 @@ MonoBehaviour:
   color: {r: 0.9266045, g: 0.99215686, b: 0, a: 1}
   metallic: 0
   smothness: 0.5
-  emissionColor: {r: 1, g: 1, b: 1, a: 1}
+  emissionColor: {r: 2, g: 2, b: 2, a: 1}
 --- !u!135 &2105699711
 SphereCollider:
   m_ObjectHideFlags: 0

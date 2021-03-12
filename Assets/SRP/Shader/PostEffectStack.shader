@@ -23,12 +23,20 @@ Shader "Hidden/Custom Pipeline/PostEffectStack" {
 			ENDHLSL
 		}
 
-
 		Pass { // depth strips
 			HLSLPROGRAM
 			#pragma target 3.5
 			#pragma vertex DefaultPassVertex
 			#pragma fragment DepthStripsPassFragment
+			#include "../ShaderLibrary/PostEffectStack.hlsl"
+			ENDHLSL
+		}
+
+		Pass { // tonemapping
+			HLSLPROGRAM
+			#pragma target 3.5
+			#pragma vertex DefaultPassVertex
+			#pragma fragment ToneMappingPassFragment
 			#include "../ShaderLibrary/PostEffectStack.hlsl"
 			ENDHLSL
 		}

@@ -23,3 +23,4 @@ MonoBehaviour:
   fourCascadesSplit: {x: 0.20555422, y: 0.44397587, z: 0.7170001}
   renderScale: 1
   MSAA: 1
+  allowHDR: 0
