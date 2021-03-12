@@ -9,10 +9,18 @@ public class CustomPostProcessingStack : ScriptableObject
     [SerializeField]
     bool depthStripes = false;
 
+    public bool NeedsDepth
+    {
+        get
+        {
+            return depthStripes;
+        }
+    }
 
     static int mainTexId = Shader.PropertyToID("_MainTex");
     static int tempTexId = Shader.PropertyToID("_PostProcessingStackTempTex");
     static int depthTexId = Shader.PropertyToID("_DepthTex");
+    static int resolvedTexId = Shader.PropertyToID("_PostProcessingStackResolvedTex");
 
     enum Pass { Copy, Blur, DepthStrips };
 
@@ -54,7 +62,7 @@ public class CustomPostProcessingStack : ScriptableObject
         //DepthStrips(cb, cameraColorId, cameraDepthId, width, height);
     }
 
-    public void RenderAfterOpaque(CommandBuffer cb, int cameraColorId, int cameraDepthId, int width, int height)
+    public void RenderAfterOpaque(CommandBuffer cb, int cameraColorId, int cameraDepthId, int width, int height, int samples)
     {
         InitializeStatic();
         if (depthStripes)
@@ -63,11 +71,21 @@ public class CustomPostProcessingStack : ScriptableObject
         }
     }
 
-    public void RenderAfterTransparent(CommandBuffer cb, int cameraColorId, int cameraDepthId, int width, int height)
+    public void RenderAfterTransparent(CommandBuffer cb, int cameraColorId, int cameraDepthId, int width, int height, int samples)
     {
         if(blurStrength > 0)
         {
-            Blur(cb, cameraColorId, width, height);
+            if (samples > 1)
+            {
+                // avoid drawcalls
+                cb.GetTemporaryRT(resolvedTexId, width, height, 0, FilterMode.Bilinear);
+                Blit(cb, cameraColorId, resolvedTexId);
+                Blur(cb, resolvedTexId, width, height);
+                cb.ReleaseTemporaryRT(resolvedTexId);
+            } else
+            {
+                Blur(cb, cameraColorId, width, height);
+            }
         } else
         {
             Blit(cb, cameraColorId, BuiltinRenderTextureType.CameraTarget);
@@ -78,12 +96,6 @@ public class CustomPostProcessingStack : ScriptableObject
     void Blur(CommandBuffer cb, int cameraColorId, int width, int height)
     {
         cb.BeginSample("Blur");
-        if (blurStrength == 0)
-        {
-            Blit(cb, cameraColorId, BuiltinRenderTextureType.CameraTarget, Pass.Blur);
-            cb.EndSample("Blur");
-            return;
-        }
 
         cb.GetTemporaryRT(tempTexId, width, height, 0, FilterMode.Bilinear);
         

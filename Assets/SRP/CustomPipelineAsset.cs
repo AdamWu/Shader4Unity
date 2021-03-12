@@ -21,6 +21,14 @@ public class CustomPipelineAsset : RenderPipelineAsset
         Four = 4
     }
 
+    public enum MSAAMode
+    {
+        Off = 1,
+        _2x = 2,
+        _4x = 4,
+        _8x = 8
+    }
+
     [SerializeField]
     bool dynamicBatching;
     [SerializeField]
@@ -41,11 +49,18 @@ public class CustomPipelineAsset : RenderPipelineAsset
     float twoCascadesSplit = 0.25f;
     [SerializeField, HideInInspector]
     Vector3 fourCascadesSplit = new Vector3(0.067f, 0.2f, 0.467f);
+    
+    [SerializeField, Range(0.25f, 2f)]
+    float renderScale = 1f;
+    [SerializeField]
+    MSAAMode MSAA = MSAAMode.Off;
 
     protected override IRenderPipeline InternalCreatePipeline()
     {
         Vector3 shadowCascadeSplit = shadowCascades == ShadowCascades.Four ? fourCascadesSplit : new Vector3(twoCascadesSplit, 0);
-        return new CustomPipeline(dynamicBatching, instancing, defaultStack,(int)shadowMapSize, shadowDistance, shadowFadeRange, (int)shadowCascades, shadowCascadeSplit);
+        return new CustomPipeline(dynamicBatching, instancing, defaultStack,
+            (int)shadowMapSize, shadowDistance, shadowFadeRange, (int)shadowCascades, shadowCascadeSplit,
+            renderScale, (int)MSAA);
     }
 
     public bool HasShadowCascades
