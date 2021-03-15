@@ -14,3 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   blurStrength: 0
   depthStripes: 0
+  toneMapping: 0
+  toneMappingRange: 98.1

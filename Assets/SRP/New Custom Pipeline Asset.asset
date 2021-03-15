@@ -12,12 +12,25 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b581950b0651e0440926fec638632340, type: 3}
   m_Name: New Custom Pipeline Asset
   m_EditorClassIdentifier: 
-  dynamicBatching: 0
-  instancing: 1
+  useDynamicBatching: 1
+  useGPUInstancing: 1
+  useSRPBatcher: 1
+  shadowSettings:
+    maxDistance: 20
+    distanceFade: 0.15
+    directional:
+      atlasSize: 512
+      filter: 1
+      cascadeCount: 4
+      cascadeRatio1: 0.18
+      cascadeRatio2: 0.3
+      cascadeRatio3: 0.5
+      cascadeFade: 0.27
+      cascadeBlend: 1
   defaultStack: {fileID: 0}
   shadowMapSize: 4096
-  shadowDistance: 20
-  shadowFadeRange: 1
+  shadowDistance: 40
+  shadowFadeRange: 0.73
   shadowCascades: 4
   twoCascadesSplit: 0.25
   fourCascadesSplit: {x: 0.20555422, y: 0.44397587, z: 0.7170001}

@@ -1,5 +1,5 @@
 using UnityEditor;
-using UnityEditor.Experimental.Rendering;
+using UnityEditor.Rendering;
 using UnityEngine;
 
 [CustomEditor(typeof(CustomPipelineAsset))]
@@ -23,10 +23,10 @@ public class CustomPipelineAssetEditor : Editor {
             case 0:
                 return;
             case 1:
-                CoreEditorUtils.DrawCascadeSplitGUI<float>(ref twoCascadesSplit);
+                //CoreEditorUtils.DrawCascadeSplitGUI<float>(ref twoCascadesSplit);
                 break;
             case 2:
-                CoreEditorUtils.DrawCascadeSplitGUI<Vector3>(ref fourCascadesSplit);
+                //CoreEditorUtils.DrawCascadeSplitGUI<Vector3>(ref fourCascadesSplit);
                 break;
         }
         serializedObject.ApplyModifiedProperties();

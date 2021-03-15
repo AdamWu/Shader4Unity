@@ -1,9 +1,7 @@
 using UnityEngine;
 using UnityEngine.Rendering;
-using UnityEngine.Experimental.Rendering;
 
-
-[CreateAssetMenu(menuName = "Rendering/Custom Pipeline")]
+[CreateAssetMenu(menuName = "Rendering/Custom Render Pipeline")]
 public class CustomPipelineAsset : RenderPipelineAsset
 {
     public enum ShadowMapSize
@@ -30,9 +28,14 @@ public class CustomPipelineAsset : RenderPipelineAsset
     }
 
     [SerializeField]
-    bool dynamicBatching = false;
+    bool useDynamicBatching = true;
     [SerializeField]
-    bool instancing = false;
+    bool useGPUInstancing = true;
+    [SerializeField]
+    bool useSRPBatcher = true;
+    [SerializeField]
+    ShadowSettings shadowSettings = default;
+
 
     [SerializeField]
     CustomPostProcessingStack defaultStack;
@@ -57,10 +60,11 @@ public class CustomPipelineAsset : RenderPipelineAsset
     [SerializeField]
     bool allowHDR;
 
-    protected override IRenderPipeline InternalCreatePipeline()
+    protected override RenderPipeline CreatePipeline()
     {
         Vector3 shadowCascadeSplit = shadowCascades == ShadowCascades.Four ? fourCascadesSplit : new Vector3(twoCascadesSplit, 0);
-        return new CustomPipeline(dynamicBatching, instancing, defaultStack,
+        return new CustomPipeline(useDynamicBatching, useGPUInstancing, useSRPBatcher, shadowSettings,
+            defaultStack,
             (int)shadowMapSize, shadowDistance, shadowFadeRange, (int)shadowCascades, shadowCascadeSplit,
             renderScale, (int)MSAA, allowHDR);
     }

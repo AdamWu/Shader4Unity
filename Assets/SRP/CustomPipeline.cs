@@ -1,7 +1,6 @@
 using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Rendering;
-using UnityEngine.Experimental.Rendering;
 using UnityEngine.Experimental.GlobalIllumination;
 using LightType = UnityEngine.LightType;
 using Conditional = System.Diagnostics.ConditionalAttribute;
@@ -82,8 +81,8 @@ public class CustomPipeline : RenderPipeline
     CommandBuffer cameraBuffer = new CommandBuffer { name = "Render Camera" };
     CommandBuffer shadowBuffer = new CommandBuffer { name = "Render Shadows" };
     CommandBuffer postProcessingBuffer = new CommandBuffer { name = "Post Processing" };
-    DrawRendererFlags drawFlags;
-    CullResults cull;
+    //DrawRendererFlags drawFlags;
+    CullingResults cull;
 
     // lights
     Vector4[] visibleLightColors = new Vector4[maxVisibleLights];
@@ -121,19 +120,23 @@ public class CustomPipeline : RenderPipeline
     int msaaSamples = 1;
     bool allowHDR;
 
-    public CustomPipeline(bool dynamicBatching, bool instancing, CustomPostProcessingStack defaultStack, 
+    CameraRenderer renderer = new CameraRenderer();
+    bool useDynamicBatching, useGPUInstancing;
+    ShadowSettings shadowSettings;
+
+    public CustomPipeline(bool useDynamicBatching, bool useGPUInstancing, bool useSRPBatcher, ShadowSettings shadowSettings,
+        CustomPostProcessingStack defaultStack, 
         int shadowMapSize, float shadowDistance, float shadowFadeRange, int shadowCascades, Vector3 shadowCascadeSplit,
         float renderScale, int msaaSamples, bool allowHDR)
     {
         GraphicsSettings.lightsUseLinearIntensity = true;
-        if (dynamicBatching)
-        {
-            drawFlags = DrawRendererFlags.EnableDynamicBatching;
-        }
-        if (instancing)
-        {
-            drawFlags |= DrawRendererFlags.EnableInstancing;
-        }
+        GraphicsSettings.useScriptableRenderPipelineBatching = useSRPBatcher;
+
+        this.useDynamicBatching = useDynamicBatching;
+        this.useGPUInstancing = useGPUInstancing;
+        this.shadowSettings = shadowSettings;
+
+
         this.defaultStack = defaultStack;
         this.shadowMapSize = shadowMapSize;
         this.shadowDistance = shadowDistance;
@@ -159,6 +162,7 @@ public class CustomPipeline : RenderPipeline
 #endif
     }
 
+    /*
     public override void Dispose()
     {
         base.Dispose();
@@ -166,20 +170,20 @@ public class CustomPipeline : RenderPipeline
         Lightmapping.ResetDelegate();
 #endif
     }
+    */
 
-    public override void Render(ScriptableRenderContext renderContext, Camera[] cameras)
+    protected override void Render(ScriptableRenderContext renderContext, Camera[] cameras)
     {
-        base.Render(renderContext, cameras);
         foreach (var camera in cameras)
         {
-            Render(renderContext, camera);
+            renderer.Render(renderContext, camera, useDynamicBatching, useGPUInstancing, shadowSettings);
         }
     }
 
     void Render(ScriptableRenderContext context, Camera camera)
     {
         ScriptableCullingParameters cullingParameters;
-        if (!CullResults.GetCullingParameters(camera, out cullingParameters))
+        if (!camera.TryGetCullingParameters(out cullingParameters))
         {
             return;
         }
@@ -187,8 +191,8 @@ public class CustomPipeline : RenderPipeline
         // shadow distance
         cullingParameters.shadowDistance = Mathf.Min(shadowDistance, camera.farClipPlane);
 
-        CullResults.Cull(ref cullingParameters, context, ref cull);
-        if (cull.visibleLights.Count > 0)
+        cull = context.Cull(ref cullingParameters);
+        if (cull.visibleLights.Length > 0)
         {
             ConfigureLights();
             if (mainLightExists)
@@ -270,23 +274,25 @@ public class CustomPipeline : RenderPipeline
         cameraBuffer.Clear();
 
         // render mesh opaque
-        var drawSettings = new DrawRendererSettings(camera, new ShaderPassName("SRPDefaultUnlit"));
-        drawSettings.flags = drawFlags;
-        drawSettings.sorting.flags = SortFlags.CommonOpaque;
-        if (cull.visibleLights.Count > 0)
+        var sortingSettings = new SortingSettings(camera);
+        sortingSettings.criteria = SortingCriteria.CommonOpaque;
+        var drawSettings = new DrawingSettings(new ShaderTagId("SRPDefaultUnlit"), sortingSettings);
+        drawSettings.enableDynamicBatching = true;
+        drawSettings.enableInstancing = true;
+        if (cull.visibleLights.Length > 0)
         {
-            drawSettings.rendererConfiguration = RendererConfiguration.PerObjectLightIndices8;
+            drawSettings.perObjectData = PerObjectData.LightIndices;
         }
-        drawSettings.rendererConfiguration |= RendererConfiguration.PerObjectReflectionProbes;
-        drawSettings.rendererConfiguration |= RendererConfiguration.PerObjectLightmaps;
-        drawSettings.rendererConfiguration |= RendererConfiguration.PerObjectLightProbe;
-        drawSettings.rendererConfiguration |= RendererConfiguration.PerObjectLightProbeProxyVolume;
-        drawSettings.rendererConfiguration |= RendererConfiguration.PerObjectShadowMask; // shadow for static
-        drawSettings.rendererConfiguration |= RendererConfiguration.PerObjectOcclusionProbe; // shadow for dynamic
-        drawSettings.rendererConfiguration |= RendererConfiguration.PerObjectOcclusionProbeProxyVolume; // shadow for dynamic
-        var filterSettings = new FilterRenderersSettings(true);
+        drawSettings.perObjectData |= PerObjectData.ReflectionProbes;
+        drawSettings.perObjectData |= PerObjectData.Lightmaps;
+        drawSettings.perObjectData |= PerObjectData.LightProbe;
+        drawSettings.perObjectData |= PerObjectData.LightProbeProxyVolume;
+        drawSettings.perObjectData |= PerObjectData.ShadowMask; // shadow for static
+        drawSettings.perObjectData |= PerObjectData.OcclusionProbe; // shadow for dynamic
+        drawSettings.perObjectData |= PerObjectData.OcclusionProbeProxyVolume; // shadow for dynamic
+        var filterSettings = new FilteringSettings(RenderQueueRange.opaque);
         filterSettings.renderQueueRange = RenderQueueRange.opaque;
-        context.DrawRenderers(cull.visibleRenderers, ref drawSettings, filterSettings);
+        context.DrawRenderers(cull, ref drawSettings, ref filterSettings);
 
         // render skybox
         context.DrawSkybox(camera);
@@ -296,14 +302,12 @@ public class CustomPipeline : RenderPipeline
         {
             if (needsDepthOnlyPass)
             {
-                var depthOnlyDrawSettings = new DrawRendererSettings(camera, new ShaderPassName("DepthOnly")) ;
-                depthOnlyDrawSettings.flags = drawFlags;
-                depthOnlyDrawSettings.sorting.flags = SortFlags.CommonOpaque;
+                var depthOnlyDrawSettings = new DrawingSettings(new ShaderTagId("DepthOnly"), sortingSettings);
                 cameraBuffer.SetRenderTarget(cameraDepthTextureId, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
                 cameraBuffer.ClearRenderTarget(true, false, Color.clear);
                 context.ExecuteCommandBuffer(cameraBuffer);
                 cameraBuffer.Clear();
-                context.DrawRenderers(cull.visibleRenderers, ref drawSettings, filterSettings);
+                context.DrawRenderers(cull, ref drawSettings, ref filterSettings);
             }
             activeStack.RenderAfterOpaque(postProcessingBuffer, cameraColorTextureId, cameraDepthTextureId, renderWidth, renderHeight, msaaSamples, format);
             context.ExecuteCommandBuffer(postProcessingBuffer);
@@ -324,9 +328,9 @@ public class CustomPipeline : RenderPipeline
         }
 
         // render mesh transparent
-        drawSettings.sorting.flags = SortFlags.CommonTransparent;
+        sortingSettings.criteria = SortingCriteria.CommonTransparent;
         filterSettings.renderQueueRange = RenderQueueRange.transparent;
-        context.DrawRenderers(cull.visibleRenderers, ref drawSettings, filterSettings);
+        context.DrawRenderers(cull, ref drawSettings, ref filterSettings);
 
         //DrawDefaultPipeline(context, camera);
 
@@ -375,7 +379,7 @@ public class CustomPipeline : RenderPipeline
         mainLightExists = false;
         shadowTileCount = 0;
         bool shadowmaskExists = false;
-        for (int i = 0; i < cull.visibleLights.Count; i++)
+        for (int i = 0; i < cull.visibleLights.Length; i++)
         {
             if (i == maxVisibleLights) break;
             
@@ -395,7 +399,7 @@ public class CustomPipeline : RenderPipeline
 
             if (light.lightType == LightType.Directional)
             {
-                Vector4 v = light.localToWorld.GetColumn(2);
+                Vector4 v = light.localToWorldMatrix.GetColumn(2);
                 v.x = -v.x;
                 v.y = -v.y;
                 v.z = -v.z;
@@ -410,11 +414,11 @@ public class CustomPipeline : RenderPipeline
             }
             else
             {
-                visibleLightDirectionsOrPositions[i] = light.localToWorld.GetColumn(3);
+                visibleLightDirectionsOrPositions[i] = light.localToWorldMatrix.GetColumn(3);
                 attenuation.x = 1f / Mathf.Max(light.range * light.range, 0.00001f);
                 if (light.lightType == LightType.Spot)
                 {
-                    Vector4 v = light.localToWorld.GetColumn(2);
+                    Vector4 v = light.localToWorldMatrix.GetColumn(2);
                     v.x = -v.x;
                     v.y = -v.y;
                     v.z = -v.z;
@@ -443,14 +447,14 @@ public class CustomPipeline : RenderPipeline
         CoreUtils.SetKeyword(cameraBuffer, shadowmaskKeyword, shadowmaskExists && !useDistanceShadowmask);
         CoreUtils.SetKeyword(cameraBuffer, distanceShadowmaskKeyword, shadowmaskExists && useDistanceShadowmask);
 
-        if (mainLightExists || cull.visibleLights.Count > maxVisibleLights)
+        if (mainLightExists || cull.visibleLights.Length > maxVisibleLights)
         {
-            int[] lightIndices = cull.GetLightIndexMap();
+            NativeArray<int> lightIndices = cull.GetLightIndexMap(Allocator.Temp);
             if (mainLightExists)
             {
                 lightIndices[0] = -1;
             }
-            for (int i = maxVisibleLights; i < cull.visibleLights.Count; i++)
+            for (int i = maxVisibleLights; i < cull.visibleLights.Length; i++)
             {
                 lightIndices[i] = -1;
             }
@@ -542,7 +546,7 @@ public class CustomPipeline : RenderPipeline
         shadowBuffer.Clear();
 
         int tileIndex = 0;
-        for (int i = mainLightExists?1:0; i < cull.visibleLights.Count; i++)
+        for (int i = mainLightExists?1:0; i < cull.visibleLights.Length; i++)
         {
             if (i == maxVisibleLights) break;
             if (shadowData[i].x <= 0f) continue;
@@ -578,8 +582,8 @@ public class CustomPipeline : RenderPipeline
             shadowBuffer.Clear();
 
             // draw shadow for light i
-            var shadowSettings = new DrawShadowsSettings(cull, i);
-            shadowSettings.splitData.cullingSphere = splitData.cullingSphere;
+            var shadowSettings = new ShadowDrawingSettings(cull, i);
+            shadowSettings.splitData = splitData;
             context.DrawShadows(ref shadowSettings);
             
             // save matrix
@@ -615,7 +619,7 @@ public class CustomPipeline : RenderPipeline
         Light shadowLight = cull.visibleLights[0].light;
         shadowBuffer.SetGlobalFloat(shadowBiasId, shadowLight.shadowBias);
 
-        var shadowSettings = new DrawShadowsSettings(cull, 0);
+        var shadowSettings = new ShadowDrawingSettings(cull, 0);
         var tileMatrix = Matrix4x4.identity;
         tileMatrix.m00 = tileMatrix.m11 = 0.5f;
 
@@ -632,7 +636,8 @@ public class CustomPipeline : RenderPipeline
             shadowBuffer.Clear();
 
             // draw shadow for light i
-            cascadeCullingSpheres[i] = shadowSettings.splitData.cullingSphere = splitData.cullingSphere;
+            shadowSettings.splitData = splitData;
+            cascadeCullingSpheres[i] = splitData.cullingSphere;
             cascadeCullingSpheres[i].w *= cascadeCullingSpheres[i].w * 1.0f;
             context.DrawShadows(ref shadowSettings);
             
@@ -673,16 +678,16 @@ public class CustomPipeline : RenderPipeline
             };
         }
 
-        var drawSettings = new DrawRendererSettings(camera, new ShaderPassName("SRPDefaultUnlit"));
-        drawSettings.SetShaderPassName(1, new ShaderPassName("Always"));
-        drawSettings.SetShaderPassName(2, new ShaderPassName("ForwardBase"));
-        drawSettings.SetShaderPassName(3, new ShaderPassName("PrepassBase"));
-        drawSettings.SetShaderPassName(4, new ShaderPassName("Vertex"));
-        drawSettings.SetShaderPassName(5, new ShaderPassName("VertexLMRGBM"));
-        drawSettings.SetShaderPassName(6, new ShaderPassName("VertexLM"));
-        //drawSettings.SetOverrideMaterial(errorMaterial, 0);
+        var drawSettings = new DrawingSettings(new ShaderTagId("SRPDefaultUnlit"), new SortingSettings(camera));
+        drawSettings.SetShaderPassName(1, new ShaderTagId("Always"));
+        drawSettings.SetShaderPassName(2, new ShaderTagId("ForwardBase"));
+        drawSettings.SetShaderPassName(3, new ShaderTagId("PrepassBase"));
+        drawSettings.SetShaderPassName(4, new ShaderTagId("Vertex"));
+        drawSettings.SetShaderPassName(5, new ShaderTagId("VertexLMRGBM"));
+        drawSettings.SetShaderPassName(6, new ShaderTagId("VertexLM"));
+        //drawSettings.overrideMaterial = errorMaterial;
 
-        var filterSettings = new FilterRenderersSettings(true);
-        context.DrawRenderers(cull.visibleRenderers, ref drawSettings, filterSettings);
+        var filterSettings = FilteringSettings.defaultValue;
+        context.DrawRenderers(cull, ref drawSettings, ref filterSettings);
     }
 }
