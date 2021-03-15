@@ -59,7 +59,7 @@ Material:
     - _BumpScale: 1
     - _Clipping: 1
     - _Cull: 2
-    - _Cutoff: 0.2
+    - _Cutoff: 0.175
     - _DetailNormalMapScale: 1
     - _DstBlend: 0
     - _GlossMapScale: 1
