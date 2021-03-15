@@ -61,20 +61,21 @@ VertexOutput ShadowCasterPassVertex(VertexInput input) {
 	return output;
 }
 
-float4 ShadowCasterPassFragment(VertexOutput input) : SV_TARGET {
+void ShadowCasterPassFragment(VertexOutput input) {
 	UNITY_SETUP_INSTANCE_ID(input);
 	float alpha = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, input.uv).a;
-	alpha *= UNITY_ACCESS_INSTANCED_PROP(PerInstance, _Color).a;
+	alpha *= UNITY_ACCESS_INSTANCED_PROP(PerInstance, _Color).a;	
 
-	clip(0);
-
+	clip(alpha - UNITY_ACCESS_INSTANCED_PROP(PerInstance, _Cutoff));
+	
+	/*
 #if defined(_SHADOWS_CLIP)
 	clip(alpha - UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Cutoff));
 #elif defined(_SHADOWS_DITHER)
 	float dither = InterleavedGradientNoise(input.positionCS.xy, 0);
 	clip(alpha - dither); 
 #endif
-	return 0;
+	*/
 }
 
 #endif

@@ -9,7 +9,7 @@ Material:
   m_PrefabAsset: {fileID: 0}
   m_Name: LitOpaqueMaterial
   m_Shader: {fileID: 4800000, guid: d6ee75a827fd9ee448767b77d42ce231, type: 3}
-  m_ShaderKeywords: _CLIPPING_OFF _RECEIVE_SHADOWS
+  m_ShaderKeywords: _CLIPPING_OFF _RECEIVE_SHADOWS _SHADOWS_ON
   m_LightmapFlags: 0
   m_EnableInstancingVariants: 1
   m_DoubleSidedGI: 0
@@ -71,6 +71,7 @@ Material:
     - _Parallax: 0.02
     - _PremulAlpha: 0
     - _ReceiveShadows: 1
+    - _Shadows: 0
     - _Smoothness: 0.211
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
