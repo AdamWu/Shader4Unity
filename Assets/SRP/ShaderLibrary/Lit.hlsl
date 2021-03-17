@@ -7,6 +7,7 @@
 #include "../ShaderLibrary/Shadows.hlsl" 
 #include "../ShaderLibrary/Light.hlsl"
 #include "../ShaderLibrary/BRDF.hlsl"
+#include "../ShaderLibrary/GI.hlsl"
 #include "../ShaderLibrary/Lighting.hlsl"
 
 CBUFFER_START(UnityPerDraw)
@@ -14,6 +15,16 @@ float4x4 unity_ObjectToWorld;
 float4x4 unity_WorldToObject;
 float4 unity_LODFade;
 real4 unity_WorldTransformParams;
+
+//float4 unity_LightmapST;
+//float4 unity_DynamicLightmapST;
+float4 unity_SHAr;
+float4 unity_SHAg;
+float4 unity_SHAb;
+float4 unity_SHBr;
+float4 unity_SHBg;
+float4 unity_SHBb;
+float4 unity_SHC;
 CBUFFER_END
 
 float3 _WorldSpaceCameraPos;
@@ -42,10 +53,12 @@ UNITY_DEFINE_INSTANCED_PROP(float, _Metallic)
 UNITY_DEFINE_INSTANCED_PROP(float, _Smoothness)
 UNITY_INSTANCING_BUFFER_END(PerInstance)
 
+
 struct VertexInput {
 	float4 pos : POSITION;
 	float3 normal : NORMAL;
 	float2 uv : TEXCOORD0;
+	GI_ATTRIBUTE_DATA
 	UNITY_VERTEX_INPUT_INSTANCE_ID
 };
 
@@ -54,6 +67,7 @@ struct VertexOutput {
 	float3 normal : TEXCOORD0; 
 	float2 uv : TEXCOORD1;
 	float3 worldPos : TEXCOORD3;
+	GI_VARYINGS_DATA
 	UNITY_VERTEX_INPUT_INSTANCE_ID
 };
 
@@ -61,6 +75,7 @@ VertexOutput LitPassVertex(VertexInput input) {
 	VertexOutput output;
 	UNITY_SETUP_INSTANCE_ID(input);
 	UNITY_TRANSFER_INSTANCE_ID(input, output);
+	TRANSFER_GI_DATA(input, output);
 	float4 worldPos = mul(UNITY_MATRIX_M, float4(input.pos.xyz, 1.0));
 	output.clipPos = mul(unity_MatrixVP, worldPos);
 #if defined(UNITY_ASSUME_UNIFORM_SCALING)
@@ -102,7 +117,8 @@ float4 LitPassFragment(VertexOutput input) : SV_TARGET{
 #else
 	BRDF brdf = GetBRDF(surface);
 #endif
-	float3 color = GetLighting(surface, brdf);
+	GI gi = GetGI(GI_FRAGMENT_DATA(input), surface);
+	float3 color = GetLighting(surface, brdf, gi);
 	return float4(color, surface.alpha);
 
 	//return finalColor;

@@ -74,6 +74,7 @@ public partial class CameraRenderer
         drawingSettings.enableDynamicBatching = useDynamicBatching;
         drawingSettings.enableInstancing = useGPUInstancing;
         drawingSettings.SetShaderPassName(1, litShaderTagId);
+        drawingSettings.perObjectData = PerObjectData.Lightmaps | PerObjectData.LightProbe;
 
         context.DrawRenderers(cullingResults, ref drawingSettings, ref filterSettings);
 
