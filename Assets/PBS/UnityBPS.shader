@@ -4,6 +4,10 @@ Shader "Custom/UnityPBS" {
 		_MainTex("MainTex",2D)="white"{}
 		_Metallic("Metallic", Range(0,1)) = 0.0
 		_Smoothness("Smoothness",Range(0.0,1)) = 0.5
+		[NoScaleOffset] _MetallicMap("Metallic", 2D) = "white" {}
+		[NoScaleOffset] _RoughnessMap("Roughness", 2D) = "white" {}
+		[NoScaleOffset] _NormalMap("NormalMap", 2D) = "bump" {}
+		[NoScaleOffset] _OcclusionMap("Occlusion AO", 2D) = "white" {}
 	}
 		SubShader{
 		Pass{
@@ -16,8 +20,8 @@ Shader "Custom/UnityPBS" {
 		#define PI 3.1415926535
 
 		float4 _Color;
-		sampler2D _MainTex;
-		float4 _MainTex_ST;
+		sampler2D _MainTex, _MetallicMap, _RoughnessMap, _NormalMap, _OcclusionMap;
+		float4 _MainTex_ST, _MetallicMap_ST, _RoughnessMap_ST, _NormalMap_ST, _OcclusionMap_ST;
 		float _Metallic;
 		float _Smoothness;
 
@@ -144,6 +148,10 @@ Shader "Custom/UnityPBS" {
 		}
 
 		float4 frag(v2f i) :SV_Target{
+
+			float4 normal = tex2D(_NormalMap, i.uv);
+			float3 tangentNormal = UnpackNormal(normal);
+
 			float3 worldNormalDir = normalize(i.normal);
 			float3 worldLightDir = normalize(_WorldSpaceLightPos0.xyz);		
 			float3 worldViewDir= normalize(_WorldSpaceCameraPos.xyz - i.worldPos);
@@ -151,8 +159,8 @@ Shader "Custom/UnityPBS" {
 
 			OutPut o;
 			o.Albedo = tex2D(_MainTex, i.uv);
-			o.Metallic = _Metallic;
-			o.Smoothness = _Smoothness;
+			o.Metallic = tex2D(_MetallicMap, i.uv);//_Metallic;
+			o.Smoothness = 1-tex2D(_RoughnessMap, i.uv);//_Smoothness;
 			o.normalDir= worldNormalDir;
 			o.viewDir = worldViewDir;
 			o.lightDir = worldLightDir;
