@@ -26,11 +26,18 @@ float4x4 glstate_matrix_projection;
 TEXTURE2D(_MainTex);
 SAMPLER(sampler_MainTex);
 
+/*
 UNITY_INSTANCING_BUFFER_START(PerInstance)
 UNITY_DEFINE_INSTANCED_PROP(float4, _Color)
 UNITY_DEFINE_INSTANCED_PROP(float4, _MainTex_ST)
 UNITY_DEFINE_INSTANCED_PROP(float, _Cutoff)
 UNITY_INSTANCING_BUFFER_END(PerInstance)
+*/
+CBUFFER_START(UnityPerMaterial)
+float4 _Color;
+float4 _MainTex_ST;
+float _Cutoff;
+CBUFFER_END
 
 struct VertexInput {
 	float4 pos : POSITION;
@@ -50,16 +57,14 @@ VertexOutput UnlitPassVertex(VertexInput input) {
 	UNITY_TRANSFER_INSTANCE_ID(input, output);
 	float4 wpos = mul(UNITY_MATRIX_M, float4(input.pos.xyz, 1.0));
 	output.clipPos = mul(unity_MatrixVP, wpos);
-	float4 ST = UNITY_ACCESS_INSTANCED_PROP(PerInstance, _MainTex_ST);
-	output.uv = input.uv * ST.xy + ST.zw;
+	output.uv = input.uv * _MainTex_ST.xy + _MainTex_ST.zw;
 	return output;
 }
 
 float4 UnlitPassFragment(VertexOutput input) : SV_TARGET {
 	UNITY_SETUP_INSTANCE_ID(input);
 	float4 texColor = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, input.uv);
-	float4 color = UNITY_ACCESS_INSTANCED_PROP(PerInstance, _Color);
-	float4 finalColor = texColor * color;
+	float4 finalColor = texColor * _Color;
 
 #if defined(_CLIPPING)
 	float cutoff = UNITY_ACCESS_INSTANCED_PROP(PerInstance, _Cutoff);
