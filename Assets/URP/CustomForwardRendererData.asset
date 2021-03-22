@@ -1,5 +1,44 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-7316090423527104769
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6b3d386ba5cd94485973aee1479b272e, type: 3}
+  m_Name: StencilTest
+  m_EditorClassIdentifier: 
+  m_Active: 0
+  settings:
+    passTag: StencilTest
+    Event: 300
+    filterSettings:
+      RenderQueueType: 0
+      LayerMask:
+        serializedVersion: 2
+        m_Bits: 1024
+      PassNames: []
+    overrideMaterial: {fileID: 2100000, guid: 74138e24dc292804598505a8549b000f, type: 2}
+    overrideMaterialPassIndex: 0
+    overrideDepthState: 0
+    depthCompareFunction: 4
+    enableWrite: 1
+    stencilSettings:
+      overrideStencilState: 0
+      stencilReference: 0
+      stencilCompareFunction: 8
+      passOperation: 0
+      failOperation: 0
+      zFailOperation: 0
+    cameraSettings:
+      overrideCamera: 0
+      restoreCamera: 1
+      offset: {x: 0, y: 0, z: 0, w: 0}
+      cameraFieldOfView: 60
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -13,10 +52,12 @@ MonoBehaviour:
   m_Name: CustomForwardRendererData
   m_EditorClassIdentifier: 
   m_RendererFeatures:
-  - {fileID: 1463157302785772387}
   - {fileID: 1103837941215297610}
+  - {fileID: 1463157302785772387}
   - {fileID: 6311175811888251531}
-  m_RendererFeatureMap: 638b1093d02d4e144a80bc57c29e510f8b02a37ef6cc9557
+  - {fileID: 6170868816852196868}
+  - {fileID: -7316090423527104769}
+  m_RendererFeatureMap: 4a80bc57c29e510f638b1093d02d4e148b02a37ef6cc9557049e02887e54a355ff9e07a98506789a
   postProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}
   shaders:
     blitPS: {fileID: 4800000, guid: c17132b1f77d20942aa75f8429c0f8bc, type: 3}
@@ -27,18 +68,18 @@ MonoBehaviour:
     fallbackErrorPS: {fileID: 4800000, guid: e6e9a19c3678ded42a3bc431ebef7dbd, type: 3}
   m_OpaqueLayerMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 55
   m_TransparentLayerMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 55
   m_DefaultStencilState:
-    overrideStencilState: 1
+    overrideStencilState: 0
     stencilReference: 1
     stencilCompareFunction: 8
     passOperation: 0
     failOperation: 0
     zFailOperation: 0
-  m_ShadowTransparentReceive: 1
+  m_ShadowTransparentReceive: 0
 --- !u!114 &1103837941215297610
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -90,10 +131,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6b3d386ba5cd94485973aee1479b272e, type: 3}
   m_Name: RenderOpaque
   m_EditorClassIdentifier: 
-  m_Active: 0
+  m_Active: 1
   settings:
     passTag: RenderOpaque
-    Event: 250
+    Event: 300
     filterSettings:
       RenderQueueType: 0
       LayerMask:
@@ -117,6 +158,22 @@ MonoBehaviour:
       restoreCamera: 1
       offset: {x: 0, y: 0, z: 0, w: 0}
       cameraFieldOfView: 40
+--- !u!114 &6170868816852196868
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba84818d087b93141810b1350acd5f71, type: 3}
+  m_Name: RenderSobelOutline
+  m_EditorClassIdentifier: 
+  m_Active: 0
+  setting:
+    Event: 500
+    material: {fileID: 2100000, guid: 013f8125e73413d4dbc6962841279562, type: 2}
 --- !u!114 &6311175811888251531
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -127,11 +184,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6b3d386ba5cd94485973aee1479b272e, type: 3}
-  m_Name: RenderOutline
+  m_Name: RenderBasicOutline
   m_EditorClassIdentifier: 
   m_Active: 1
   settings:
-    passTag: RenderOutline
+    passTag: RenderBasicOutline
     Event: 300
     filterSettings:
       RenderQueueType: 0
@@ -142,7 +199,7 @@ MonoBehaviour:
     overrideMaterial: {fileID: 2100000, guid: e398f9699e560c74a905af8c84419341, type: 2}
     overrideMaterialPassIndex: 0
     overrideDepthState: 0
-    depthCompareFunction: 8
+    depthCompareFunction: 5
     enableWrite: 0
     stencilSettings:
       overrideStencilState: 0

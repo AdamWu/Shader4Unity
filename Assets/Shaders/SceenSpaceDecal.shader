@@ -52,15 +52,11 @@ Shader "SmartEditor/SceenSpaceDecal"
 				float depth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, uv);
 				depth = Linear01Depth (depth) * 1;
 
-				//return float4(i.ray.z, i.ray.z, i.ray.z, 1);
-
 				float3 rayToFarPlane = i.ray * (_ProjectionParams.z / i.ray.z);
 				float3 vpos = rayToFarPlane * depth;
 				float3 wpos = mul (unity_CameraToWorld, float4(vpos,1)).xyz;
 				float3 opos = mul (unity_WorldToObject, float4(wpos,1)).xyz;
-				//clip (float3(0.5,0.5,0.5) - abs(opos.xyz));
-
-				return float4(rayToFarPlane, 1);
+				clip (float3(0.5,0.5,0.5) - abs(opos.xyz));
 
 				// 转换到 [0,1] 区间
 				float2 texUV = opos.xz + 0.5;
