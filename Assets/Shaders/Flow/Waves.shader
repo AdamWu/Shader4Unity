@@ -27,6 +27,7 @@ Shader "Custom/Waves" {
 		fixed4 _Color;
 		float4 _WaveA, _WaveB, _WaveC;
 
+		// 格斯特纳波-摆线波
 		float3 GerstnerWave(float4 wave, float3 p, inout float3 tangent, inout float3 binormal) {
 			float steepness = wave.z;
 			float wavelength = wave.w;

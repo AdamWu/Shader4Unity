@@ -96,5 +96,5 @@ Material:
     - _Emission: {r: 0, g: 0, b: 0, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _WaveA: {r: 1, g: 1, b: 0.2, a: 10}
-    - _WaveB: {r: 0, g: 1, b: 0.3, a: 20}
+    - _WaveB: {r: 0, g: 1, b: 0.3, a: 10}
     - _WaveC: {r: 1, g: 1, b: 0.15, a: 10}
