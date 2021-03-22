@@ -9,6 +9,9 @@ CBUFFER_END
 
 CBUFFER_START(UnityPerDraw)
 float4x4 unity_ObjectToWorld;
+float4x4 unity_WorldToObject;
+float4 unity_LODFade;
+real4 unity_WorldTransformParams;
 CBUFFER_END
 
 CBUFFER_START(_ShadowCasterBuffer)
@@ -22,11 +25,18 @@ SAMPLER(sampler_MainTex);
 
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/UnityInstancing.hlsl"
 
+/*
 UNITY_INSTANCING_BUFFER_START(PerInstance)
 UNITY_DEFINE_INSTANCED_PROP(float4, _MainTex_ST)
 UNITY_DEFINE_INSTANCED_PROP(float4, _Color)
 UNITY_DEFINE_INSTANCED_PROP(float, _Cutoff)
 UNITY_INSTANCING_BUFFER_END(PerInstance)
+*/
+CBUFFER_START(UnityPerMaterial)
+float4 _Color;
+float4 _MainTex_ST;
+float _Cutoff;
+CBUFFER_END
 
 struct VertexInput {
 	float4 pos : POSITION;
@@ -54,9 +64,7 @@ VertexOutput ShadowCasterPassVertex(VertexInput input) {
 	output.clipPos.z = max(output.clipPos.z, output.clipPos.w * UNITY_NEAR_CLIP_VALUE);
 #endif
 
-	//output.uv = TRANSFORM_TEX(input.uv, _MainTex);
-	float4 ST = UNITY_ACCESS_INSTANCED_PROP(PerInstance, _MainTex_ST);
-	output.uv = input.uv * ST.xy + ST.zw;
+	output.uv = input.uv * _MainTex_ST.xy + _MainTex_ST.zw;
 
 	return output;
 }
@@ -64,8 +72,7 @@ VertexOutput ShadowCasterPassVertex(VertexInput input) {
 void ShadowCasterPassFragment(VertexOutput input) {
 	UNITY_SETUP_INSTANCE_ID(input);
 	float4 texColor = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, input.uv);
-	float4 color = UNITY_ACCESS_INSTANCED_PROP(PerInstance, _Color);
-	float4 finalColor = texColor * color;
+	float4 finalColor = texColor * _Color;
 
 #if defined(_SHADOWS_CLIP)
 	clip(finalColor.a - UNITY_ACCESS_INSTANCED_PROP(PerInstance, _Cutoff));
