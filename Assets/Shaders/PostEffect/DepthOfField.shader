@@ -86,8 +86,8 @@ Shader "Hidden/DepthOfField" {
 
 				half cocMin = min(min(min(coc0, coc1), coc2), coc3);
 				half cocMax = max(max(max(coc0, coc1), coc2), coc3);
-				half coc = cocMax >= -cocMin ? cocMax : cocMin;
-				//half coc = (coc0 + coc1 + coc2 + coc3) * 0.25;
+				//half coc = cocMax >= -cocMin ? cocMax : cocMin;
+				half coc = (coc0 + coc1 + coc2 + coc3) * 0.25;
 
 				return half4(color, coc);
 			}
