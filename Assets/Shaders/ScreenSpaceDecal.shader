@@ -1,4 +1,4 @@
-Shader "SmartEditor/SceenSpaceDecal"
+Shader "SmartEditor/ScreenSpaceDecal"
 {
 	Properties
 	{
@@ -50,8 +50,9 @@ Shader "SmartEditor/SceenSpaceDecal"
 			{
 				float2 uv = i.screenUV.xy / i.screenUV.w;
 				float depth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, uv);
-				depth = Linear01Depth (depth) * 1;
+				depth = Linear01Depth (depth);
 
+				// 相机到farplane的方向向量
 				float3 rayToFarPlane = i.ray * (_ProjectionParams.z / i.ray.z);
 				float3 vpos = rayToFarPlane * depth;
 				float3 wpos = mul (unity_CameraToWorld, float4(vpos,1)).xyz;
