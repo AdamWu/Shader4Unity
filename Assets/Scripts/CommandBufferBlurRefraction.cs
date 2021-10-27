@@ -52,7 +52,7 @@ public class CommandBufferBlurRefraction : MonoBehaviour
         cb.SetGlobalVector("offsets", new Vector4(0, 2, 0, 0));
         cb.Blit(blurTexture2, blurTexture1, mMaterial);
         
-
+        // get final texture
         cb.SetGlobalTexture("_GrabBlurTexture", blurTexture1);
         camera.AddCommandBuffer(CameraEvent.AfterSkybox, cb);
     }

@@ -170,7 +170,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ba84818d087b93141810b1350acd5f71, type: 3}
   m_Name: RenderSobelOutline
   m_EditorClassIdentifier: 
-  m_Active: 0
+  m_Active: 1
   setting:
     Event: 500
     material: {fileID: 2100000, guid: 013f8125e73413d4dbc6962841279562, type: 2}
@@ -186,7 +186,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6b3d386ba5cd94485973aee1479b272e, type: 3}
   m_Name: RenderBasicOutline
   m_EditorClassIdentifier: 
-  m_Active: 1
+  m_Active: 0
   settings:
     passTag: RenderBasicOutline
     Event: 300
